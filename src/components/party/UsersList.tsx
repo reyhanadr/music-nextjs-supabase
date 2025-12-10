@@ -8,15 +8,18 @@ import { Users as UsersIcon } from 'lucide-react'
 interface UsersListProps {
     users: any[]
     hostId: string
+    onlineCount?: number
 }
 
-export function UsersList({ users, hostId }: UsersListProps) {
+export function UsersList({ users, hostId, onlineCount }: UsersListProps) {
+    const displayCount = onlineCount !== undefined ? onlineCount : users.length
+
     return (
         <Card className="bg-slate-900/50 border-slate-800">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                     <UsersIcon className="h-5 w-5" />
-                    Listening ({users.length})
+                    Listening ({displayCount})
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

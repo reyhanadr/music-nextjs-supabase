@@ -31,12 +31,14 @@ export default function PartyRoomPage() {
     const lastVideoIdRef = useRef<string | null>(null)
     const lastRoomTimeRef = useRef<number>(0) // Track last room time we received
     const hasInitialSyncRef = useRef(false)
+    const syncCountRef = useRef(0) // Track number of syncs to limit for new joiners
 
     const {
         room,
         currentSong,
         isHost,
         users,
+        presenceUsers,
         playlist,
         loading,
         setPlaying,
@@ -69,6 +71,7 @@ export default function PartyRoomPage() {
             setLocalTime(0)
             lastRoomTimeRef.current = 0
             hasInitialSyncRef.current = false
+            syncCountRef.current = 0 // Reset sync counter on video change
             if (intervalRef.current) {
                 clearInterval(intervalRef.current)
                 intervalRef.current = null
@@ -89,10 +92,10 @@ export default function PartyRoomPage() {
                     if (typeof time === 'number' && !isNaN(time)) {
                         setLocalTime(time)
 
-                        // ONLY host updates room time - every 5 seconds
+                        // Host updates room time every 2 seconds for continuous sync
                         if (isHost) {
                             const timeDiff = Math.abs(time - lastRoomTimeRef.current)
-                            if (timeDiff >= 5) {
+                            if (timeDiff >= 2) {
                                 lastRoomTimeRef.current = time
                                 updateCurrentTime(time)
                             }
@@ -116,19 +119,34 @@ export default function PartyRoomPage() {
                 ytPlayer.setVolume(volume)
             }
 
-            // Initial sync for new users joining
+            // Delay initial sync to ensure room state is fully loaded
             if (room && !hasInitialSyncRef.current) {
                 hasInitialSyncRef.current = true
 
-                if (room.current_time > 0) {
-                    ytPlayer.seekTo(room.current_time, true)
-                    setLocalTime(room.current_time)
-                    lastRoomTimeRef.current = room.current_time
-                }
+                // Use setTimeout to ensure sync happens after player is completely ready
+                setTimeout(() => {
+                    try {
+                        // Double check player is still valid and ready
+                        if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') {
+                            console.warn('Player not ready for sync')
+                            return
+                        }
 
-                if (room.is_playing) {
-                    ytPlayer.playVideo()
-                }
+                        // Sync to current playback position
+                        if (room.current_time > 0 && typeof ytPlayer.seekTo === 'function') {
+                            ytPlayer.seekTo(room.current_time, true)
+                            setLocalTime(room.current_time)
+                            lastRoomTimeRef.current = room.current_time
+                        }
+
+                        // ONLY auto-play if room is actually playing
+                        if (room.is_playing && typeof ytPlayer.playVideo === 'function') {
+                            ytPlayer.playVideo()
+                        }
+                    } catch (err) {
+                        console.error('Error syncing on join:', err)
+                    }
+                }, 1000) // 1000ms delay for better stability
             }
 
             startTimeTracking(ytPlayer)
@@ -177,35 +195,69 @@ export default function PartyRoomPage() {
         }
     }, [room?.is_playing, player, isPlayerReady])
 
-    // Sync seek ONLY for non-host users when room time CHANGES BY A LOT
-    // This uses a separate tracking of room time changes
+    // Sync seek for non-host users when room time CHANGES
+    // Limit sync to max 3 attempts for newly joined users
     useEffect(() => {
         if (!isPlayerReady || !player || !room || isHost || isSeeking) return
 
         const roomTime = room.current_time || 0
 
-        // Only sync if room time changed significantly from LAST ROOM TIME (not local time)
-        // This prevents the constant sync loop
+        // Only sync if room time changed from LAST ROOM TIME (not local time)
         const roomTimeDiff = Math.abs(roomTime - lastRoomTimeRef.current)
 
-        // If the room time jumped by more than 5 seconds, sync to it
-        if (roomTimeDiff > 5) {
-            try {
-                if (typeof player.seekTo === 'function') {
-                    setIsSeeking(true)
-                    player.seekTo(roomTime, true)
-                    setLocalTime(roomTime)
-                    lastRoomTimeRef.current = roomTime
+        // Limit sync attempts to prevent stuttering for new joiners
+        if (syncCountRef.current >= 3) {
+            // After 3 syncs, only sync if difference is very large (>10 seconds)
+            if (roomTimeDiff > 10) {
+                try {
+                    if (typeof player.seekTo === 'function') {
+                        setIsSeeking(true)
+                        setIsLoading(true)
 
-                    setTimeout(() => setIsSeeking(false), 1000)
+                        player.seekTo(roomTime, true)
+                        setLocalTime(roomTime)
+                        lastRoomTimeRef.current = roomTime
+
+                        setTimeout(() => {
+                            setIsSeeking(false)
+                            setIsLoading(false)
+                        }, 1500)
+                    }
+                } catch (error) {
+                    console.warn('Seek sync error:', error)
+                    setIsSeeking(false)
+                    setIsLoading(false)
                 }
-            } catch (error) {
-                console.warn('Seek sync error:', error)
-                setIsSeeking(false)
+            } else {
+                // Just update reference without seeking
+                lastRoomTimeRef.current = roomTime
             }
         } else {
-            // Just update our reference without seeking
-            lastRoomTimeRef.current = roomTime
+            // First 3 syncs: sync if difference > 2 seconds
+            if (roomTimeDiff > 2) {
+                syncCountRef.current += 1
+                try {
+                    if (typeof player.seekTo === 'function') {
+                        setIsSeeking(true)
+                        setIsLoading(true)
+
+                        player.seekTo(roomTime, true)
+                        setLocalTime(roomTime)
+                        lastRoomTimeRef.current = roomTime
+
+                        setTimeout(() => {
+                            setIsSeeking(false)
+                            setIsLoading(false)
+                        }, 1500)
+                    }
+                } catch (error) {
+                    console.warn('Seek sync error:', error)
+                    setIsSeeking(false)
+                    setIsLoading(false)
+                }
+            } else {
+                lastRoomTimeRef.current = roomTime
+            }
         }
     }, [room?.current_time, player, isPlayerReady, isHost, isSeeking])
 
@@ -227,7 +279,7 @@ export default function PartyRoomPage() {
         setIsLoading(true)
         const newPlayingState = !room?.is_playing
         await setPlaying(newPlayingState)
-        setTimeout(() => setIsLoading(false), 2000)
+        setTimeout(() => setIsLoading(false), 2850)
     }
 
     // Seek handler with loading state
@@ -471,8 +523,8 @@ export default function PartyRoomPage() {
                                     <div
                                         key={song.id}
                                         className={`flex items-center gap-3 p-3 rounded-lg ${song.id === currentSong.id
-                                                ? 'bg-purple-500/20 border border-purple-500/50'
-                                                : 'bg-slate-800/30'
+                                            ? 'bg-purple-500/20 border border-purple-500/50'
+                                            : 'bg-slate-800/30'
                                             }`}
                                     >
                                         <span className="text-slate-500 text-sm w-6">{index + 1}</span>
@@ -497,7 +549,7 @@ export default function PartyRoomPage() {
 
                     {/* Sidebar */}
                     <div>
-                        <UsersList users={users} hostId={room.host_id} />
+                        <UsersList users={users} hostId={room.host_id} onlineCount={presenceUsers.length} />
                     </div>
                 </div>
             </main>

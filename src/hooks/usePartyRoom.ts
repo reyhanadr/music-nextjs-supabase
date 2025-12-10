@@ -22,12 +22,18 @@ export function usePartyRoom(roomId: string) {
     const [currentSong, setCurrentSong] = useState<Song | null>(null)
     const [isHost, setIsHost] = useState(false)
     const [users, setUsers] = useState<RoomUser[]>([])
+    const [presenceUsers, setPresenceUsers] = useState<any[]>([])
     const [playlist, setPlaylist] = useState<Song[]>([])
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
     const { user } = useAuth()
     const router = useRouter()
     const isUpdatingRef = useRef(false)
+
+    // Debug: Log presence count changes only
+    useEffect(() => {
+        console.log('🟢 Presence count:', presenceUsers.length)
+    }, [presenceUsers.length])
 
     // Fetch room data
     const fetchRoom = useCallback(async () => {
@@ -78,16 +84,39 @@ export function usePartyRoom(roomId: string) {
 
     // Fetch users in room
     const fetchUsers = useCallback(async () => {
-        // Simple query without profiles join to avoid foreign key issues
-        const { data, error } = await supabase
+        const { data: roomUsersData, error: roomUsersError } = await supabase
             .from('room_users')
             .select('*')
             .eq('room_id', roomId)
 
-        if (error) {
-            console.error('Error fetching users:', error)
-        } else if (data) {
-            setUsers(data as RoomUser[])
+        if (roomUsersError) {
+            console.error('Error fetching users:', roomUsersError)
+            return
+        }
+
+        if (roomUsersData && roomUsersData.length > 0) {
+            const userIds = roomUsersData.map((ru: any) => ru.user_id)
+
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', userIds)
+
+            if (profilesError) {
+                console.error('Error fetching profiles:', profilesError)
+            }
+
+            const usersWithProfiles = roomUsersData.map((ru: any) => {
+                const profile = profilesData?.find((p: any) => p.id === ru.user_id)
+                return {
+                    ...ru,
+                    profiles: profile || null
+                }
+            })
+
+            setUsers(usersWithProfiles as RoomUser[])
+        } else {
+            setUsers([])
         }
     }, [roomId, supabase])
 
@@ -177,13 +206,24 @@ export function usePartyRoom(roomId: string) {
 
     // Subscribe to room changes
     useEffect(() => {
+        if (!user?.id) {
+            console.warn('No user ID, skipping room subscription')
+            return
+        }
+
         fetchRoom()
         fetchUsers()
         joinRoom()
 
-        // Realtime subscription for room updates
+        // Realtime subscription for room updates with Presence
         const roomChannel = supabase
-            .channel(`room:${roomId}`)
+            .channel(`room:${roomId}`, {
+                config: {
+                    presence: {
+                        key: user.id,
+                    },
+                },
+            })
             .on(
                 'postgres_changes',
                 {
@@ -210,7 +250,34 @@ export function usePartyRoom(roomId: string) {
                     }
                 }
             )
-            .subscribe()
+            .on('presence', { event: 'sync' }, () => {
+                const state = roomChannel.presenceState()
+                const online = Object.values(state).flat()
+                // Force new array reference for React re-render
+                setPresenceUsers([...online])
+                console.log('🟢 Presence synced:', online.length, 'online')
+            })
+            .on('presence', { event: 'join' }, () => {
+                // Sync will be triggered automatically
+            })
+            .on('presence', { event: 'leave' }, () => {
+                // Sync will be triggered automatically  
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    setTimeout(async () => {
+                        try {
+                            await roomChannel.track({
+                                user_id: user.id,
+                                online_at: new Date().toISOString(),
+                            })
+                            console.log('✅ Presence tracking active')
+                        } catch (error) {
+                            console.error('Presence track error:', error)
+                        }
+                    }, 100)
+                }
+            })
 
         // Realtime subscription for room users
         const usersChannel = supabase
@@ -230,18 +297,23 @@ export function usePartyRoom(roomId: string) {
             .subscribe()
 
         return () => {
+            // Untrack presence before cleanup
+            roomChannel.untrack().then(() => {
+                console.log('🔴 Presence untracked on cleanup')
+            })
             leaveRoom()
             supabase.removeChannel(roomChannel)
             supabase.removeChannel(usersChannel)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [roomId])
+    }, [roomId, user?.id]) // Added user?.id to re-run when user is loaded
 
     return {
         room,
         currentSong,
         isHost,
-        users,
+        users: users.filter(u => presenceUsers.some((p: any) => p.user_id === u.user_id)), // Only show online users
+        presenceUsers,
         playlist,
         loading,
         setPlaying,
