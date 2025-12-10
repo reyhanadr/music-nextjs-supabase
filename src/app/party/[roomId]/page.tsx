@@ -47,6 +47,7 @@ export default function PartyRoomPage() {
         previousSong,
         leaveRoom,
         updateCurrentTime,
+        broadcastProgress,
     } = usePartyRoom(roomId)
 
     // Get video ID
@@ -79,7 +80,7 @@ export default function PartyRoomPage() {
         }
     }, [videoId])
 
-    // Start time tracking function - ONLY updates local display, host syncs periodically
+    // Start time tracking - Host broadcasts every 200ms, updates DB every 2s
     const startTimeTracking = useCallback((ytPlayer: YouTubePlayer) => {
         if (intervalRef.current) {
             clearInterval(intervalRef.current)
@@ -92,8 +93,12 @@ export default function PartyRoomPage() {
                     if (typeof time === 'number' && !isNaN(time)) {
                         setLocalTime(time)
 
-                        // Host updates room time every 2 seconds for continuous sync
                         if (isHost) {
+                            // Broadcast progress in real-time (every 200ms)
+                            const isPlaying = ytPlayer.getPlayerState() === 1
+                            broadcastProgress(time, isPlaying)
+
+                            // Still update database every 2 seconds as fallback
                             const timeDiff = Math.abs(time - lastRoomTimeRef.current)
                             if (timeDiff >= 2) {
                                 lastRoomTimeRef.current = time
@@ -105,8 +110,8 @@ export default function PartyRoomPage() {
             } catch (error) {
                 // Ignore
             }
-        }, 1000)
-    }, [isHost, updateCurrentTime, isSeeking])
+        }, 200) // 200ms for smoother broadcast
+    }, [isHost, broadcastProgress, updateCurrentTime, isSeeking])
 
     // Player ready handler
     const onPlayerReady = useCallback((event: { target: YouTubePlayer }) => {
@@ -260,6 +265,38 @@ export default function PartyRoomPage() {
             }
         }
     }, [room?.current_time, player, isPlayerReady, isHost, isSeeking])
+
+    // Listen for broadcast progress updates (non-host only)
+    useEffect(() => {
+        if (isHost || !player || !isPlayerReady) return
+
+        const handleBroadcastProgress = (event: any) => {
+            const { current_time, is_playing } = event.detail
+
+            // Update local time immediately for smoother display
+            setLocalTime(current_time)
+
+            // Sync play/pause state if different
+            try {
+                const playerState = player.getPlayerState()
+                const playerIsPlaying = playerState === 1
+
+                if (is_playing && !playerIsPlaying) {
+                    player.playVideo()
+                } else if (!is_playing && playerIsPlaying) {
+                    player.pauseVideo()
+                }
+            } catch (error) {
+                console.warn('Broadcast sync error:', error)
+            }
+        }
+
+        window.addEventListener('broadcast-progress', handleBroadcastProgress)
+
+        return () => {
+            window.removeEventListener('broadcast-progress', handleBroadcastProgress)
+        }
+    }, [isHost, player, isPlayerReady])
 
     // Handle volume changes
     useEffect(() => {

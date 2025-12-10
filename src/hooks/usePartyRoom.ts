@@ -29,6 +29,7 @@ export function usePartyRoom(roomId: string) {
     const { user } = useAuth()
     const router = useRouter()
     const isUpdatingRef = useRef(false)
+    const broadcastChannelRef = useRef<any>(null)
 
     // Debug: Log presence count changes only
     useEffect(() => {
@@ -169,10 +170,29 @@ export function usePartyRoom(roomId: string) {
         await updateRoomState({ current_time: seconds })
     }, [updateRoomState])
 
-    // Update current time (used by host to periodically sync)
+    // Update current time (used by host to periodically sync via database)
     const updateCurrentTime = useCallback(async (seconds: number) => {
         await updateRoomState({ current_time: seconds })
     }, [updateRoomState])
+
+    // Broadcast progress in real-time (host only, per 200ms)
+    const broadcastProgress = useCallback((currentTime: number, isPlaying: boolean) => {
+        if (!broadcastChannelRef.current || !isHost) return
+
+        try {
+            broadcastChannelRef.current.send({
+                type: 'broadcast',
+                event: 'progress',
+                payload: {
+                    current_time: currentTime,
+                    is_playing: isPlaying,
+                    timestamp: Date.now()
+                }
+            })
+        } catch (error) {
+            console.error('Broadcast error:', error)
+        }
+    }, [isHost])
 
     // Next song
     const nextSong = useCallback(() => {
@@ -215,12 +235,15 @@ export function usePartyRoom(roomId: string) {
         fetchUsers()
         joinRoom()
 
-        // Realtime subscription for room updates with Presence
+        // Realtime subscription for room updates with Presence and Broadcast
         const roomChannel = supabase
             .channel(`room:${roomId}`, {
                 config: {
                     presence: {
                         key: user.id,
+                    },
+                    broadcast: {
+                        self: false, // Don't send to self
                     },
                 },
             })
@@ -250,6 +273,20 @@ export function usePartyRoom(roomId: string) {
                     }
                 }
             )
+            .on('broadcast', { event: 'progress' }, ({ payload }) => {
+                // Non-host users receive real-time progress updates
+                if (!isHost && payload) {
+                    // Trigger callback to party room page for sync
+                    const event = new CustomEvent('broadcast-progress', {
+                        detail: {
+                            current_time: payload.current_time,
+                            is_playing: payload.is_playing,
+                            timestamp: payload.timestamp
+                        }
+                    })
+                    window.dispatchEvent(event)
+                }
+            })
             .on('presence', { event: 'sync' }, () => {
                 const state = roomChannel.presenceState()
                 const online = Object.values(state).flat()
@@ -265,6 +302,9 @@ export function usePartyRoom(roomId: string) {
             })
             .subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
+                    // Store channel reference for broadcasting
+                    broadcastChannelRef.current = roomChannel
+
                     setTimeout(async () => {
                         try {
                             await roomChannel.track({
@@ -319,6 +359,7 @@ export function usePartyRoom(roomId: string) {
         setPlaying,
         seekTo,
         updateCurrentTime,
+        broadcastProgress,
         nextSong,
         previousSong,
         leaveRoom,
