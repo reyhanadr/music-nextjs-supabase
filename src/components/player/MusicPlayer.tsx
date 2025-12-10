@@ -8,8 +8,11 @@ import { Card } from '@/components/ui/card'
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react'
 import { extractYouTubeId, formatTime, getYouTubeThumbnail } from '@/lib/youtube'
 import { Song } from '@/types'
+import { useMediaSession } from '@/hooks/useMediaSession'
 import Image from 'next/image'
 import YouTube, { YouTubePlayer } from 'react-youtube'
+import { MotionDiv, MotionButton } from '@/components/motion/wrappers'
+import { slideUp } from '@/components/motion/variants'
 
 interface MusicPlayerProps {
     currentSong: Song | null
@@ -209,6 +212,25 @@ export function MusicPlayer({
     // Use local time for display (more responsive), but sync with parent
     const displayTime = localTime || currentTime
 
+    const thumbnail = videoId ? getYouTubeThumbnail(videoId) : null
+
+    // Use song duration if available, otherwise use fetched duration
+    const displayDuration = currentSong?.duration || duration
+
+    // Media Session Integration - MUST be called before conditional returns
+    useMediaSession({
+        title: currentSong?.title,
+        artist: currentSong?.artist,
+        artwork: thumbnail || undefined,
+        currentSong: currentSong,
+        isPlaying: isPlaying,
+        onPlay: onPlayPause,
+        onPause: onPlayPause,
+        onPrevioustrack: onPrevious,
+        onNexttrack: onNext,
+        onSeekTo: (time) => handleSeek([time]),
+    })
+
     if (!currentSong) {
         return (
             <Card className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-purple-500/20 p-4">
@@ -216,11 +238,6 @@ export function MusicPlayer({
             </Card>
         )
     }
-
-    const thumbnail = videoId ? getYouTubeThumbnail(videoId) : null
-
-    // Use song duration if available, otherwise use fetched duration
-    const displayDuration = currentSong.duration || duration
 
     const opts = {
         height: '0',
@@ -234,12 +251,19 @@ export function MusicPlayer({
             rel: 0,
             showinfo: 0,
             enablejsapi: 1,
-            origin: typeof window !== 'undefined' ? window.location.origin : ''
+            origin: typeof window !== 'undefined' ? window.location.origin : '',
+            playsinline: 1, // Important for iOS background playback behavior
         },
     }
 
     return (
-        <Card className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-900/95 via-purple-900/20 to-slate-900/95 backdrop-blur-xl border-t border-purple-500/20 p-4 z-50">
+        <MotionDiv
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={slideUp}
+            className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-background/95 via-sidebar/95 to-background/95 backdrop-blur-2xl border-t border-primary/20 z-50 transition-all duration-300 ease-in-out safe-area-pb shadow-2xl"
+        >
             {/* Hidden YouTube player */}
             <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
                 {videoId && (
@@ -255,83 +279,122 @@ export function MusicPlayer({
                 )}
             </div>
 
-            <div className="max-w-7xl mx-auto">
-                {/* Seek bar */}
-                <div className="mb-3">
+            <div className="w-full px-4 md:px-8 py-2 md:py-3 flex flex-col gap-2">
+                {/* Mobile Seek Bar (Top) */}
+                <div className="md:hidden w-full px-1">
                     <Slider
                         value={[displayTime]}
                         max={displayDuration || 100}
                         step={1}
                         onValueChange={handleSeek}
-                        className="cursor-pointer"
+                        className="cursor-pointer h-1.5"
                     />
-                    <div className="flex justify-between mt-1 text-xs text-slate-400">
-                        <span>{formatTime(displayTime)}</span>
-                        <span>{formatTime(displayDuration)}</span>
-                    </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-3 md:gap-6">
                     {/* Song info */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-initial md:w-1/3">
                         {thumbnail && (
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-lg overflow-hidden flex-shrink-0 shadow-lg border border-primary/20 group">
                                 <Image
                                     src={thumbnail}
                                     alt={currentSong.title}
                                     fill
-                                    className="object-cover"
+                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
                                 />
                             </div>
                         )}
                         <div className="min-w-0 flex-1">
-                            <h3 className="text-white font-semibold truncate">{currentSong.title}</h3>
+                            <h3 className="text-foreground text-sm md:text-base font-semibold truncate leading-tight">
+                                {currentSong.title}
+                            </h3>
                             {currentSong.artist && (
-                                <p className="text-slate-400 text-sm truncate">{currentSong.artist}</p>
+                                <p className="text-muted-foreground text-xs md:text-sm truncate mt-0.5 font-medium">
+                                    {currentSong.artist}
+                                </p>
                             )}
                         </div>
                     </div>
 
-                    {/* Controls */}
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onPrevious}
-                            className="text-white hover:text-purple-400 hover:bg-purple-500/10"
-                        >
-                            <SkipBack className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            size="icon"
-                            onClick={onPlayPause}
-                            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white h-10 w-10"
-                        >
-                            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onNext}
-                            className="text-white hover:text-purple-400 hover:bg-purple-500/10"
-                        >
-                            <SkipForward className="h-5 w-5" />
-                        </Button>
+                    {/* Desktop Controls (Center) */}
+                    <div className="hidden md:flex flex-col items-center gap-1 flex-1 max-w-md">
+                        <div className="flex items-center gap-6">
+                            <MotionButton
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                variant="ghost"
+                                size="icon"
+                                onClick={onPrevious}
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                                <SkipBack className="h-5 w-5" />
+                            </MotionButton>
+
+                            <MotionButton
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                size="icon"
+                                onClick={onPlayPause}
+                                className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 w-12 rounded-full shadow-lg shadow-primary/25 border border-primary/20"
+                            >
+                                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
+                            </MotionButton>
+
+                            <MotionButton
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                variant="ghost"
+                                size="icon"
+                                onClick={onNext}
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                                <SkipForward className="h-5 w-5" />
+                            </MotionButton>
+                        </div>
+                        <div className="w-full flex items-center gap-3 text-xs text-muted-foreground font-medium">
+                            <span className="min-w-[40px] text-right">{formatTime(displayTime)}</span>
+                            <Slider
+                                value={[displayTime]}
+                                max={displayDuration || 100}
+                                step={1}
+                                onValueChange={handleSeek}
+                                className="cursor-pointer flex-1"
+                            />
+                            <span className="min-w-[40px] text-left">{formatTime(displayDuration)}</span>
+                        </div>
                     </div>
 
-                    {/* Volume */}
-                    <div className="hidden md:flex items-center gap-2 flex-1 max-w-xs">
-                        <Volume2 className="h-4 w-4 text-slate-400" />
-                        <Slider
-                            value={[volume * 100]}
-                            max={100}
-                            step={1}
-                            onValueChange={handleVolumeChange}
-                            className="cursor-pointer"
-                        />
+                    {/* Mobile Controls (Right) */}
+                    <div className="flex md:hidden items-center gap-3">
+                        <div className="text-xs text-muted-foreground font-mono mr-1">
+                            {formatTime(displayTime)}
+                        </div>
+                        <MotionButton
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            size="icon"
+                            onClick={onPlayPause}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 w-10 rounded-full shadow-md"
+                        >
+                            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                        </MotionButton>
+                    </div>
+
+                    {/* Volume (Right Desktop) */}
+                    <div className="hidden md:flex items-center justify-end gap-2 flex-1 md:w-1/3">
+                        <div className="flex items-center gap-2 w-32 group">
+                            <Volume2 className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <Slider
+                                value={[volume * 100]}
+                                max={100}
+                                step={1}
+                                onValueChange={handleVolumeChange}
+                                className="cursor-pointer"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-        </Card>
+        </MotionDiv>
     )
 }

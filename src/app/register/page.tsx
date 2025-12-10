@@ -6,9 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
+import { fadeIn, scaleUp } from '@/components/motion/variants'
+import { Loader2 } from 'lucide-react'
 
 export default function RegisterPage() {
     const [email, setEmail] = useState('')
@@ -42,20 +45,34 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-slate-900 to-blue-900 p-4">
-            <Card className="w-full max-w-md border-purple-500/20 bg-slate-900/50 backdrop-blur-xl">
-                <CardHeader className="space-y-1">
-                    <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+        <MotionDiv
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-background p-4 relative overflow-hidden"
+        >
+            {/* Background decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] opacity-30 animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[100px] opacity-30 animate-pulse delay-1000" />
+            </div>
+
+            <MotionCard
+                variants={scaleUp}
+                className="w-full max-w-md border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl shadow-primary/10 relative z-10"
+            >
+                <CardHeader className="space-y-2 text-center">
+                    <CardTitle className="text-4xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent pb-1">
                         Create Account
                     </CardTitle>
-                    <CardDescription className="text-center text-slate-400">
+                    <CardDescription className="text-muted-foreground text-lg">
                         Join us and start listening together
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleRegister} className="space-y-4">
+                    <form onSubmit={handleRegister} className="space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
+                            <Label htmlFor="fullName" className="text-foreground/80">Full Name</Label>
                             <Input
                                 id="fullName"
                                 type="text"
@@ -63,11 +80,11 @@ export default function RegisterPage() {
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
                                 required
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                                className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 h-12"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-slate-300">Email</Label>
+                            <Label htmlFor="email" className="text-foreground/80">Email</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -75,11 +92,11 @@ export default function RegisterPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                                className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 h-12"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-slate-300">Password</Label>
+                            <Label htmlFor="password" className="text-foreground/80">Password</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -88,26 +105,33 @@ export default function RegisterPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 minLength={6}
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                                className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 h-12"
                             />
-                            <p className="text-xs text-slate-500">Minimum 6 characters</p>
+                            <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
                         </div>
-                        <Button
+                        <MotionButton
                             type="submit"
-                            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full h-12 text-lg font-medium bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25 transition-all"
                             disabled={loading}
                         >
-                            {loading ? 'Creating account...' : 'Register'}
-                        </Button>
+                            {loading ? (
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <span>Creating account...</span>
+                                </div>
+                            ) : 'Register'}
+                        </MotionButton>
                     </form>
-                    <div className="mt-4 text-center text-sm text-slate-400">
+                    <div className="mt-6 text-center text-sm text-muted-foreground">
                         Already have an account?{' '}
-                        <Link href="/login" className="text-purple-400 hover:text-purple-300 font-semibold">
+                        <Link href="/login" className="text-primary hover:text-primary/80 font-semibold underline-offset-4 hover:underline transition-colors">
                             Login
                         </Link>
                     </div>
                 </CardContent>
-            </Card>
-        </div>
+            </MotionCard>
+        </MotionDiv>
     )
 }

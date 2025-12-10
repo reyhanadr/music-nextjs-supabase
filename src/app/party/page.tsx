@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { Navigation } from '@/components/layout/Navigation'
 import { CreateRoomDialog } from '@/components/party/CreateRoomDialog'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 import { Users, Music, Play } from 'lucide-react'
 import Link from 'next/link'
+import { MotionDiv, MotionCard } from '@/components/motion/wrappers'
+import { staggerContainer, slideUp, scaleUp, fadeIn } from '@/components/motion/variants'
 
 interface RoomWithUsers {
     id: string
@@ -56,69 +58,102 @@ export default function PartyPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    const RoomSkeleton = () => (
+        <div className="bg-card/30 rounded-xl border border-primary/10 p-6 space-y-4 animate-pulse h-[200px]">
+            <div className="flex justify-between items-start">
+                <div className="space-y-2 w-2/3">
+                    <div className="h-6 bg-secondary/50 rounded w-3/4" />
+                    <div className="h-4 bg-secondary/30 rounded w-1/2" />
+                </div>
+                <div className="h-6 w-16 bg-secondary/30 rounded-full" />
+            </div>
+            <div className="pt-4 space-y-4">
+                <div className="h-4 bg-secondary/30 rounded w-1/3" />
+                <div className="h-10 bg-primary/20 rounded w-full" />
+            </div>
+        </div>
+    )
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 pb-24">
+        <MotionDiv
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            className="min-h-screen bg-gradient-to-br from-background via-sidebar to-background pb-24"
+        >
             <Navigation />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+                <MotionDiv variants={slideUp} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+                        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-400 to-secondary-foreground bg-clip-text text-transparent">
                             Party Rooms
                         </h1>
-                        <p className="text-slate-400 mt-1">
+                        <p className="text-muted-foreground mt-1 text-lg">
                             Join a room or create your own to listen together
                         </p>
                     </div>
                     <CreateRoomDialog onRoomCreated={fetchRooms} />
-                </div>
+                </MotionDiv>
 
                 {loading ? (
-                    <div className="text-center text-slate-400 py-12">Loading rooms...</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <RoomSkeleton key={i} />
+                        ))}
+                    </div>
                 ) : rooms.length === 0 ? (
-                    <div className="text-center py-12">
-                        <Music className="h-16 w-16 mx-auto text-slate-700 mb-4" />
-                        <p className="text-slate-400 mb-4">No active rooms. Create one to get started!</p>
+                    <div className="text-center py-20 bg-card/30 rounded-2xl border border-primary/5">
+                        <Music className="h-16 w-16 mx-auto text-primary/50 mb-4" />
+                        <p className="text-muted-foreground mb-4 text-xl font-medium">No active rooms found.</p>
+                        <p className="text-sm text-muted-foreground/70">Create one to get the party started!</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <MotionDiv
+                        variants={staggerContainer}
+                        initial="initial"
+                        animate="animate"
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    >
                         {rooms.map((room) => (
-                            <Card
+                            <MotionCard
                                 key={room.id}
-                                className="bg-slate-900/50 border-slate-800 hover:border-purple-500/40 transition-all hover:scale-105 group"
+                                variants={scaleUp}
+                                whileHover={{ y: -5 }}
+                                className="bg-card/50 backdrop-blur-sm border-primary/10 hover:border-primary/40 transition-all shadow-lg shadow-black/10 hover:shadow-primary/5 group"
                             >
                                 <CardHeader>
                                     <div className="flex items-start justify-between">
-                                        <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-white truncate">{room.name}</CardTitle>
-                                            <CardDescription className="text-slate-400 mt-1">
+                                        <div className="flex-1 min-w-0 pr-2">
+                                            <CardTitle className="text-foreground truncate text-xl group-hover:text-primary transition-colors">{room.name}</CardTitle>
+                                            <CardDescription className="text-muted-foreground mt-1">
                                                 {room.playlist?.length || 0} songs in playlist
                                             </CardDescription>
                                         </div>
                                         {room.is_playing && (
-                                            <Badge variant="outline" className="border-green-500/50 text-green-400">
-                                                <Play className="h-3 w-3 mr-1" />
+                                            <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10 animate-pulse">
+                                                <Play className="h-3 w-3 mr-1 fill-current" />
                                                 Playing
                                             </Badge>
                                         )}
                                     </div>
                                 </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
                                         <Users className="h-4 w-4" />
                                         <span>{room.room_users?.[0]?.count || 0} listening</span>
                                     </div>
-                                    <Link href={`/party/${room.id}`}>
-                                        <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600">
+                                    <Link href={`/party/${room.id}`} className="block">
+                                        <Button className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
                                             Join Room
                                         </Button>
                                     </Link>
                                 </CardContent>
-                            </Card>
+                            </MotionCard>
                         ))}
-                    </div>
+                    </MotionDiv>
                 )}
             </main>
-        </div>
+        </MotionDiv>
     )
 }

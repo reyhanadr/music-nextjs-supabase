@@ -6,14 +6,17 @@ import { useParams } from 'next/navigation'
 import { Navigation } from '@/components/layout/Navigation'
 import { UsersList } from '@/components/party/UsersList'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePartyRoom } from '@/hooks/usePartyRoom'
 import { LogOut, Music, Volume2, Loader2 } from 'lucide-react'
 import { extractYouTubeId, formatTime, getYouTubeThumbnail } from '@/lib/youtube'
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
+import { useMediaSession } from '@/hooks/useMediaSession'
 import Image from 'next/image'
 import YouTube, { YouTubePlayer } from 'react-youtube'
+import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
+import { slideUp, staggerContainer, scaleUp, hoverScale, slideIn } from '@/components/motion/variants'
 
 export default function PartyRoomPage() {
     const params = useParams()
@@ -52,6 +55,7 @@ export default function PartyRoomPage() {
 
     // Get video ID
     const videoId = currentSong ? extractYouTubeId(currentSong.youtube_url) : null
+    const thumbnail = videoId ? getYouTubeThumbnail(videoId, 'maxres') : null
 
     // Cleanup interval on unmount
     useEffect(() => {
@@ -144,9 +148,12 @@ export default function PartyRoomPage() {
                             lastRoomTimeRef.current = room.current_time
                         }
 
-                        // ONLY auto-play if room is actually playing
+                        // Sync play/pause state
                         if (room.is_playing && typeof ytPlayer.playVideo === 'function') {
                             ytPlayer.playVideo()
+                        } else if (!room.is_playing && typeof ytPlayer.pauseVideo === 'function') {
+                            // Explicitly pause if room is not playing
+                            ytPlayer.pauseVideo()
                         }
                     } catch (err) {
                         console.error('Error syncing on join:', err)
@@ -368,12 +375,34 @@ export default function PartyRoomPage() {
     // Display time
     const displayTime = localTime
 
+    // Media Session Integration - Must be at top level
+    useMediaSession({
+        title: currentSong?.title,
+        artist: currentSong?.artist,
+        artwork: thumbnail || undefined,
+        currentSong: currentSong,
+        isPlaying: room?.is_playing ?? false,
+        onPlay: async () => {
+            if (!room?.is_playing) {
+                await handlePlayPause()
+            }
+        },
+        onPause: async () => {
+            if (room?.is_playing) {
+                await handlePlayPause()
+            }
+        },
+        onPrevioustrack: handlePreviousSong,
+        onNexttrack: handleNextSong,
+        onSeekTo: (time) => handleSeek([time]),
+    })
+
     // Loading state
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center">
-                <div className="flex items-center gap-3 text-slate-400">
-                    <Loader2 className="h-6 w-6 animate-spin" />
+            <div className="min-h-screen bg-gradient-to-br from-background via-sidebar to-background flex items-center justify-center">
+                <div className="flex items-center gap-3 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     Loading room...
                 </div>
             </div>
@@ -383,13 +412,12 @@ export default function PartyRoomPage() {
     // Room not found
     if (!room || !currentSong) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center">
-                <div className="text-slate-400">Room not found or no songs in playlist</div>
+            <div className="min-h-screen bg-gradient-to-br from-background via-sidebar to-background flex items-center justify-center">
+                <div className="text-muted-foreground">Room not found or no songs in playlist</div>
             </div>
         )
     }
 
-    const thumbnail = videoId ? getYouTubeThumbnail(videoId, 'maxres') : null
     const displayDuration = currentSong.duration || 300
 
     const opts = {
@@ -404,54 +432,70 @@ export default function PartyRoomPage() {
             rel: 0,
             showinfo: 0,
             enablejsapi: 1,
-            origin: typeof window !== 'undefined' ? window.location.origin : ''
+            origin: typeof window !== 'undefined' ? window.location.origin : '',
+            playsinline: 1, // Important for iOS background playback behavior
         },
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 pb-24">
+        <div className="min-h-screen bg-gradient-to-br from-background via-sidebar to-background pb-24">
             <Navigation />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
                 {/* Room Header */}
-                <div className="flex items-center justify-between mb-8">
+                <MotionDiv
+                    initial="initial"
+                    animate="animate"
+                    variants={slideUp}
+                    className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4"
+                >
                     <div>
-                        <h1 className="text-4xl font-bold text-white">{room.name}</h1>
-                        <p className="text-slate-400 mt-1">
-                            Party Mode - Synchronized Playback
-                            {isHost && <span className="text-purple-400 ml-2">(You are the host)</span>}
+                        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-400 to-secondary-foreground bg-clip-text text-transparent">{room.name}</h1>
+                        <p className="text-muted-foreground mt-1 flex items-center gap-2">
+                            Party Mode
+                            <span className="w-1 h-1 rounded-full bg-slate-500" />
+                            Synchronized Playback
+                            {isHost && <span className="text-primary font-medium ml-1 bg-primary/10 px-2 py-0.5 rounded-full text-xs border border-primary/20">Host</span>}
                         </p>
                     </div>
                     <Button
                         variant="outline"
                         onClick={leaveRoom}
-                        className="border-red-900/50 text-red-400 hover:bg-red-900/20"
+                        className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
                     >
                         <LogOut className="h-4 w-4 mr-2" />
                         Leave Room
                     </Button>
-                </div>
+                </MotionDiv>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <MotionDiv
+                    variants={staggerContainer}
+                    initial="initial"
+                    animate="animate"
+                    className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                >
                     {/* Main Player */}
                     <div className="lg:col-span-2 space-y-6">
-                        <Card className="bg-slate-900/50 border-purple-500/20 overflow-hidden">
+                        <MotionCard
+                            variants={scaleUp}
+                            className="bg-card/50 backdrop-blur-md border-primary/20 overflow-hidden shadow-xl"
+                        >
                             {/* Album Art / Thumbnail */}
-                            <div className="relative aspect-video bg-gradient-to-br from-purple-900/40 to-slate-900">
+                            <div className="relative aspect-video bg-gradient-to-br from-primary/20 to-sidebar">
                                 {thumbnail && (
                                     <Image
                                         src={thumbnail}
                                         alt={currentSong.title}
                                         fill
-                                        className="object-cover"
+                                        className="object-cover opacity-90"
                                     />
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
 
                                 {/* Loading overlay */}
                                 {isLoading && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                        <Loader2 className="h-12 w-12 text-purple-400 animate-spin" />
+                                    <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
+                                        <Loader2 className="h-12 w-12 text-primary animate-spin" />
                                     </div>
                                 )}
                             </div>
@@ -471,70 +515,78 @@ export default function PartyRoomPage() {
                                 )}
                             </div>
 
-                            <CardContent className="p-6 space-y-4">
+                            <CardContent className="p-6 space-y-6">
                                 {/* Song Info */}
                                 <div>
-                                    <h2 className="text-2xl font-bold text-white">{currentSong.title}</h2>
+                                    <h2 className="text-2xl font-bold text-foreground text-center md:text-left">{currentSong.title}</h2>
                                     {currentSong.artist && (
-                                        <p className="text-slate-400 mt-1">{currentSong.artist}</p>
+                                        <p className="text-muted-foreground mt-1 text-center md:text-left text-lg">{currentSong.artist}</p>
                                     )}
                                 </div>
 
                                 {/* Seek Bar */}
-                                <div>
+                                <div className="space-y-2">
                                     <Slider
                                         value={[displayTime]}
                                         max={displayDuration}
                                         step={1}
                                         onValueChange={handleSeek}
-                                        className="cursor-pointer"
+                                        className="cursor-pointer py-2"
                                         disabled={isLoading}
                                     />
-                                    <div className="flex justify-between mt-2 text-xs text-slate-400">
+                                    <div className="flex justify-between text-xs text-muted-foreground font-mono">
                                         <span>{formatTime(displayTime)}</span>
                                         <span>{formatTime(displayDuration)}</span>
                                     </div>
                                 </div>
 
                                 {/* Controls */}
-                                <div className="flex items-center justify-center gap-4">
-                                    <Button
+                                <div className="flex items-center justify-center gap-6">
+                                    <MotionButton
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
                                         variant="ghost"
                                         size="icon"
                                         onClick={handlePreviousSong}
                                         disabled={isLoading}
-                                        className="text-white hover:text-purple-400 hover:bg-purple-500/10 h-10 w-10 disabled:opacity-50"
+                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-12 w-12 disabled:opacity-50 transition-colors"
                                     >
-                                        <SkipBack className="h-5 w-5" />
-                                    </Button>
-                                    <Button
+                                        <SkipBack className="h-6 w-6" />
+                                    </MotionButton>
+
+                                    <MotionButton
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
                                         size="icon"
                                         onClick={handlePlayPause}
                                         disabled={isLoading}
-                                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-14 w-14 disabled:opacity-50"
+                                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-16 w-16 rounded-full shadow-lg shadow-primary/30 border-2 border-primary/20 disabled:opacity-50"
                                     >
                                         {isLoading ? (
-                                            <Loader2 className="h-6 w-6 animate-spin" />
+                                            <Loader2 className="h-8 w-8 animate-spin" />
                                         ) : room.is_playing ? (
-                                            <Pause className="h-6 w-6" />
+                                            <Pause className="h-8 w-8" />
                                         ) : (
-                                            <Play className="h-6 w-6 ml-0.5" />
+                                            <Play className="h-8 w-8 ml-1" />
                                         )}
-                                    </Button>
-                                    <Button
+                                    </MotionButton>
+
+                                    <MotionButton
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleNextSong}
                                         disabled={isLoading}
-                                        className="text-white hover:text-purple-400 hover:bg-purple-500/10 h-10 w-10 disabled:opacity-50"
+                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-12 w-12 disabled:opacity-50 transition-colors"
                                     >
-                                        <SkipForward className="h-5 w-5" />
-                                    </Button>
+                                        <SkipForward className="h-6 w-6" />
+                                    </MotionButton>
                                 </div>
 
                                 {/* Volume Control */}
-                                <div className="flex items-center gap-3 max-w-xs mx-auto">
-                                    <Volume2 className="h-4 w-4 text-slate-400" />
+                                <div className="flex items-center gap-4 max-w-xs mx-auto pt-2">
+                                    <Volume2 className="h-4 w-4 text-muted-foreground" />
                                     <Slider
                                         value={[volume]}
                                         max={100}
@@ -542,53 +594,58 @@ export default function PartyRoomPage() {
                                         onValueChange={handleVolumeChange}
                                         className="cursor-pointer"
                                     />
-                                    <span className="text-xs text-slate-400 w-8">{volume}%</span>
+                                    <span className="text-xs text-muted-foreground w-8 font-mono">{volume}%</span>
                                 </div>
                             </CardContent>
-                        </Card>
+                        </MotionCard>
 
                         {/* Playlist */}
-                        <Card className="bg-slate-900/50 border-slate-800">
+                        <MotionCard
+                            variants={slideUp}
+                            className="bg-card/50 backdrop-blur-sm border-secondary/20"
+                        >
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-white">
-                                    <Music className="h-5 w-5" />
+                                <CardTitle className="flex items-center gap-2 text-foreground">
+                                    <Music className="h-5 w-5 text-secondary-foreground" />
                                     Playlist ({playlist.length} songs)
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+                            <CardContent className="space-y-2 max-h-80 overflow-y-auto px-2">
                                 {playlist.map((song, index) => (
-                                    <div
+                                    <MotionDiv
                                         key={song.id}
-                                        className={`flex items-center gap-3 p-3 rounded-lg ${song.id === currentSong.id
-                                            ? 'bg-purple-500/20 border border-purple-500/50'
-                                            : 'bg-slate-800/30'
+                                        variants={slideIn}
+                                        viewport={{ once: true }}
+                                        className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${song.id === currentSong.id
+                                            ? 'bg-primary/10 border border-primary/30'
+                                            : 'bg-card/30 hover:bg-card/50 border border-transparent'
                                             }`}
                                     >
-                                        <span className="text-slate-500 text-sm w-6">{index + 1}</span>
+                                        <span className={`text-sm w-6 font-mono ${song.id === currentSong.id ? 'text-primary' : 'text-muted-foreground'}`}>{index + 1}</span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-white font-medium truncate">{song.title}</p>
+                                            <p className={`font-medium truncate ${song.id === currentSong.id ? 'text-primary' : 'text-foreground'}`}>{song.title}</p>
                                             {song.artist && (
-                                                <p className="text-sm text-slate-400 truncate">{song.artist}</p>
+                                                <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
                                             )}
                                         </div>
                                         {song.id === currentSong.id && room.is_playing && (
                                             <div className="flex items-center gap-1">
-                                                <div className="w-1 h-3 bg-purple-500 animate-pulse" />
-                                                <div className="w-1 h-4 bg-purple-500 animate-pulse" style={{ animationDelay: '0.2s' }} />
-                                                <div className="w-1 h-3 bg-purple-500 animate-pulse" style={{ animationDelay: '0.4s' }} />
+                                                <div className="w-1 h-3 bg-primary animate-pulse" />
+                                                <div className="w-1 h-4 bg-primary animate-pulse" style={{ animationDelay: '0.2s' }} />
+                                                <div className="w-1 h-3 bg-primary animate-pulse" style={{ animationDelay: '0.4s' }} />
                                             </div>
                                         )}
-                                    </div>
+                                    </MotionDiv>
                                 ))}
                             </CardContent>
-                        </Card>
+                        </MotionCard>
                     </div>
 
                     {/* Sidebar */}
-                    <div>
+                    <div className="lg:col-span-1">
                         <UsersList users={users} hostId={room.host_id} onlineCount={presenceUsers.length} />
                     </div>
-                </div>
+                </MotionDiv>
             </main>
         </div>
     )

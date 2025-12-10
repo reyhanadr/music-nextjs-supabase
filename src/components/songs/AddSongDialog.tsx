@@ -17,6 +17,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { isValidYouTubeUrl, extractYouTubeId, getYouTubeThumbnail } from '@/lib/youtube'
+import { MotionButton } from '@/components/motion/wrappers'
+import { Loader2 } from 'lucide-react'
 
 interface AddSongDialogProps {
     onSongAdded: () => void
@@ -77,54 +79,58 @@ export function AddSongDialog({ onSongAdded }: AddSongDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600">
+                <MotionButton
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25"
+                >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Song
-                </Button>
+                </MotionButton>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-purple-500/20 text-white">
+            <DialogContent className="bg-card/95 backdrop-blur-xl border-primary/20 text-foreground shadow-2xl shadow-primary/10 sm:rounded-xl">
                 <DialogHeader>
-                    <DialogTitle>Add New Song</DialogTitle>
-                    <DialogDescription className="text-slate-400">
+                    <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">Add New Song</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
                         Add a song from YouTube to your library
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5 mt-2">
                     <div className="space-y-2">
-                        <Label htmlFor="title">Song Title *</Label>
+                        <Label htmlFor="title" className="text-foreground/80">Song Title <span className="text-primary">*</span></Label>
                         <Input
                             id="title"
                             placeholder="Enter song title"
                             value={formData.title}
                             onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                             required
-                            className="bg-slate-800 border-slate-700"
+                            className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="artist">Artist</Label>
+                        <Label htmlFor="artist" className="text-foreground/80">Artist</Label>
                         <Input
                             id="artist"
                             placeholder="Enter artist name (optional)"
                             value={formData.artist}
                             onChange={(e) => setFormData(prev => ({ ...prev, artist: e.target.value }))}
-                            className="bg-slate-800 border-slate-700"
+                            className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="youtube_url">YouTube URL *</Label>
+                        <Label htmlFor="youtube_url" className="text-foreground/80">YouTube URL <span className="text-primary">*</span></Label>
                         <Input
                             id="youtube_url"
                             placeholder="https://www.youtube.com/watch?v=..."
                             value={formData.youtube_url}
                             onChange={(e) => setFormData(prev => ({ ...prev, youtube_url: e.target.value }))}
                             required
-                            className="bg-slate-800 border-slate-700"
+                            className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 font-mono text-xs"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label>Duration</Label>
-                        <p className="text-xs text-slate-500">Enter song duration (optional)</p>
+                        <Label className="text-foreground/80">Duration</Label>
+                        <p className="text-xs text-muted-foreground">Enter song duration (optional)</p>
                         <div className="flex gap-2 items-center">
                             <div className="flex-1">
                                 <Input
@@ -135,10 +141,10 @@ export function AddSongDialog({ onSongAdded }: AddSongDialogProps) {
                                     placeholder="0"
                                     value={formData.duration_minutes}
                                     onChange={(e) => setFormData(prev => ({ ...prev, duration_minutes: e.target.value }))}
-                                    className="bg-slate-800 border-slate-700"
+                                    className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20"
                                 />
                             </div>
-                            <span className="text-slate-400 text-sm">min</span>
+                            <span className="text-muted-foreground text-sm">min</span>
                             <div className="flex-1">
                                 <Input
                                     id="duration_seconds"
@@ -148,18 +154,23 @@ export function AddSongDialog({ onSongAdded }: AddSongDialogProps) {
                                     placeholder="0"
                                     value={formData.duration_seconds}
                                     onChange={(e) => setFormData(prev => ({ ...prev, duration_seconds: e.target.value }))}
-                                    className="bg-slate-800 border-slate-700"
+                                    className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20"
                                 />
                             </div>
-                            <span className="text-slate-400 text-sm">sec</span>
+                            <span className="text-muted-foreground text-sm">sec</span>
                         </div>
                     </div>
                     <Button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                        className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 h-10 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-primary/20"
                         disabled={loading}
                     >
-                        {loading ? 'Adding...' : 'Add Song'}
+                        {loading ? (
+                            <div className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Adding...</span>
+                            </div>
+                        ) : 'Add Song'}
                     </Button>
                 </form>
             </DialogContent>

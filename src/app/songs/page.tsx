@@ -23,6 +23,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Song } from '@/types'
 import { toast } from 'sonner'
 import { Search } from 'lucide-react'
+import { MotionDiv } from '@/components/motion/wrappers'
+import { staggerContainer, slideUp, fadeIn } from '@/components/motion/variants'
 
 export default function SongsPage() {
     const [songs, setSongs] = useState<Song[]>([])
@@ -86,43 +88,69 @@ export default function SongsPage() {
         setDeletingSong(null)
     }
 
+    // Skeleton Loader Component
+    const SongSkeleton = () => (
+        <div className="bg-card/30 rounded-xl overflow-hidden border border-primary/10 animate-pulse">
+            <div className="aspect-square bg-secondary/50" />
+            <div className="p-4 space-y-2">
+                <div className="h-5 bg-secondary/50 rounded w-3/4" />
+                <div className="h-4 bg-secondary/30 rounded w-1/2" />
+            </div>
+        </div>
+    )
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 pb-32">
+        <MotionDiv
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            className="min-h-screen bg-gradient-to-br from-background via-sidebar to-background pb-32"
+        >
             <Navigation />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+                <MotionDiv variants={slideUp} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                        <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
                             Music Library
                         </h1>
-                        <p className="text-slate-400 mt-1">
+                        <p className="text-muted-foreground mt-1 text-lg">
                             {songs.length} {songs.length === 1 ? 'song' : 'songs'} in your library
                         </p>
                     </div>
                     <AddSongDialog onSongAdded={fetchSongs} />
-                </div>
+                </MotionDiv>
 
-                <div className="mb-6">
-                    <div className="relative max-w-md">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <MotionDiv variants={slideUp} className="mb-8">
+                    <div className="relative max-w-md group">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         <Input
                             placeholder="Search songs or artists..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 bg-slate-900/50 border-slate-800 text-white placeholder:text-slate-500"
+                            className="pl-10 bg-secondary/30 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground transition-all hover:bg-secondary/50"
                         />
                     </div>
-                </div>
+                </MotionDiv>
 
                 {loading ? (
-                    <div className="text-center text-slate-400 py-12">Loading songs...</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                            <SongSkeleton key={i} />
+                        ))}
+                    </div>
                 ) : filteredSongs.length === 0 ? (
-                    <div className="text-center text-slate-400 py-12">
-                        {searchQuery ? 'No songs found matching your search.' : 'No songs yet. Add your first song!'}
+                    <div className="text-center text-muted-foreground py-20 bg-card/30 rounded-2xl border border-primary/5">
+                        <p className="text-xl font-medium">{searchQuery ? 'No songs found matching your search.' : 'No songs yet.'}</p>
+                        {!searchQuery && <p className="mt-2 opacity-70">Add your first song to get started!</p>}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <MotionDiv
+                        variants={staggerContainer}
+                        initial="initial"
+                        animate="animate"
+                        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+                    >
                         {filteredSongs.map((song) => (
                             <SongCard
                                 key={song.id}
@@ -133,7 +161,7 @@ export default function SongsPage() {
                                 isOwner={song.user_id === user?.id}
                             />
                         ))}
-                    </div>
+                    </MotionDiv>
                 )}
             </main>
 
@@ -161,26 +189,26 @@ export default function SongsPage() {
             />
 
             <AlertDialog open={!!deletingSong} onOpenChange={(open) => !open && setDeletingSong(null)}>
-                <AlertDialogContent className="bg-slate-900 border-red-500/20">
+                <AlertDialogContent className="bg-card border-destructive/20 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">Delete Song?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
+                        <AlertDialogTitle className="text-foreground">Delete Song?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
                             Are you sure you want to delete "{deletingSong?.title}"? This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="border-slate-700 hover:bg-slate-800">
+                        <AlertDialogCancel className="border-secondary hover:bg-secondary text-foreground">
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                         >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </MotionDiv>
     )
 }

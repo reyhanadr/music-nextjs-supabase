@@ -19,6 +19,9 @@ import { toast } from 'sonner'
 import { Plus, Music } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
+import { MotionDiv, MotionButton } from '@/components/motion/wrappers'
+import { slideIn, staggerContainer, scaleUp } from '@/components/motion/variants'
+import { AnimatePresence } from 'framer-motion'
 
 interface CreateRoomDialogProps {
     onRoomCreated?: () => void
@@ -93,58 +96,72 @@ export function CreateRoomDialog({ onRoomCreated }: CreateRoomDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600">
+                <MotionButton
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25 border-t border-white/20"
+                >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Room
-                </Button>
+                </MotionButton>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-purple-500/20 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="bg-card/95 backdrop-blur-xl border-primary/20 text-foreground max-w-2xl max-h-[80vh] overflow-y-auto sm:rounded-xl shadow-2xl shadow-primary/10">
                 <DialogHeader>
-                    <DialogTitle>Create Party Room</DialogTitle>
-                    <DialogDescription className="text-slate-400">
+                    <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary/80 to-foreground bg-clip-text text-transparent">Create Party Room</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
                         Create a room and add songs to the playlist
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                     <div className="space-y-2">
-                        <Label htmlFor="roomName">Room Name *</Label>
+                        <Label htmlFor="roomName" className="text-foreground/80">Room Name <span className="text-primary">*</span></Label>
                         <Input
                             id="roomName"
                             placeholder="Enter room name"
                             value={roomName}
                             onChange={(e) => setRoomName(e.target.value)}
                             required
-                            className="bg-slate-800 border-slate-700"
+                            className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Select Songs for Playlist *</Label>
-                        <p className="text-sm text-slate-400">{selectedSongs.length} songs selected</p>
-                        <div className="space-y-2 max-h-60 overflow-y-auto border border-slate-800 rounded-lg p-3">
+                        <Label className="text-foreground/80">Select Songs for Playlist <span className="text-primary">*</span></Label>
+                        <p className="text-xs text-muted-foreground">{selectedSongs.length} songs selected</p>
+
+                        <div className="space-y-2 max-h-64 overflow-y-auto border border-secondary/20 rounded-xl p-3 bg-secondary/20">
                             {songs.length === 0 ? (
-                                <p className="text-slate-500 text-sm text-center py-4">No songs available. Add some songs first!</p>
+                                <p className="text-muted-foreground text-sm text-center py-8">No songs available. Add some songs first!</p>
                             ) : (
-                                songs.map(song => (
-                                    <div
+                                songs.map((song, index) => (
+                                    <MotionDiv
                                         key={song.id}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.05 }}
                                         onClick={() => toggleSong(song.id)}
-                                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedSongs.includes(song.id)
-                                                ? 'bg-purple-500/20 border border-purple-500/50'
-                                                : 'bg-slate-800/50 hover:bg-slate-800'
+                                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${selectedSongs.includes(song.id)
+                                            ? 'bg-primary/10 border-primary/40 shadow-[0_0_10px_-3px_var(--primary)]'
+                                            : 'bg-card/50 hover:bg-card border-transparent hover:border-sidebar-foreground/10'
                                             }`}
                                     >
-                                        <Music className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                                        <Music className={`h-4 w-4 flex-shrink-0 transition-colors ${selectedSongs.includes(song.id) ? 'text-primary' : 'text-muted-foreground'}`} />
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium truncate">{song.title}</p>
-                                            {song.artist && <p className="text-sm text-slate-400 truncate">{song.artist}</p>}
+                                            <p className={`font-medium truncate ${selectedSongs.includes(song.id) ? 'text-foreground' : 'text-muted-foreground'}`}>{song.title}</p>
+                                            {song.artist && <p className="text-xs text-muted-foreground/70 truncate">{song.artist}</p>}
                                         </div>
                                         {selectedSongs.includes(song.id) && (
-                                            <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/50">
-                                                {selectedSongs.indexOf(song.id) + 1}
-                                            </Badge>
+                                            <MotionDiv
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                className="flex-shrink-0"
+                                            >
+                                                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                                                    {selectedSongs.indexOf(song.id) + 1}
+                                                </Badge>
+                                            </MotionDiv>
                                         )}
-                                    </div>
+                                    </MotionDiv>
                                 ))
                             )}
                         </div>
@@ -152,10 +169,15 @@ export function CreateRoomDialog({ onRoomCreated }: CreateRoomDialogProps) {
 
                     <Button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+                        className="w-full h-12 text-lg font-medium bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99] rounded-xl"
                         disabled={loading}
                     >
-                        {loading ? 'Creating...' : 'Create Room'}
+                        {loading ? (
+                            <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                                <span>Creating...</span>
+                            </div>
+                        ) : 'Create Room'}
                     </Button>
                 </form>
             </DialogContent>
