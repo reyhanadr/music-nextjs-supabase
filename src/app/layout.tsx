@@ -23,7 +23,51 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: "Music Party - Listen Together",
-  description: "Share and enjoy music together in real-time party rooms",
+  description: "Share and enjoy music together in real-time party rooms. Create party rooms, sync YouTube music, and enjoy the same beat with friends—no matter where they are.",
+  keywords: ["music", "party", "sync", "realtime", "youtube", "playlist", "streaming", "listen together", "music streaming", "party room"],
+  authors: [{ name: "Reyhan Adriana Deris", url: "https://reyhanadr.com" }],
+  creator: "Reyhan Adriana Deris",
+  publisher: "Music Party",
+  metadataBase: new URL("https://music-party.reyhanadr.com/"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://music-party.reyhanadr.com/",
+    siteName: "Music Party",
+    title: "Music Party - Listen Together, Party Together",
+    description: "Create party rooms, sync YouTube music in real-time, and enjoy the same beat with friends—no matter where they are.",
+    images: [
+      {
+        url: "/opengraph_poster.png",
+        width: 1200,
+        height: 630,
+        alt: "Music Party - Listen Together, Party Together",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Music Party - Listen Together, Party Together",
+    description: "Create party rooms, sync YouTube music in real-time, and enjoy the same beat with friends—no matter where they are.",
+    images: ["/opengraph_poster.png"],
+    creator: "@reyhanadr",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 import { PlayerProvider } from "@/contexts/PlayerContext";
