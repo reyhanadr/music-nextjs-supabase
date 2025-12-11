@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Navigation } from '@/components/layout/Navigation'
 import { UsersList } from '@/components/party/UsersList'
+import { ChatPanel, MobileChatButton } from '@/components/party/chat'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePartyRoom } from '@/hooks/usePartyRoom'
@@ -731,10 +732,14 @@ export default function PartyRoomPage() {
                     </div>
 
                     {/* Sidebar */}
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-1 space-y-6">
                         <UsersList users={users} hostId={room.host_id} onlineCount={presenceUsers.length} />
+                        <ChatPanel roomId={roomId} className="hidden lg:flex" />
                     </div>
                 </MotionDiv>
+
+                {/* Mobile Chat Button */}
+                <MobileChatButton roomId={roomId} className="lg:hidden" />
             </main>
         </div>
     )

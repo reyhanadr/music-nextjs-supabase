@@ -37,6 +37,20 @@ export interface Profile {
     updated_at?: string
 }
 
+export interface RoomMessage {
+    id: string
+    room_id: string
+    user_id: string
+    message: string
+    created_at: string
+    // Joined data from profiles
+    profiles?: {
+        full_name?: string
+        username?: string
+        avatar_url?: string
+    }
+}
+
 export interface PlayerState {
     currentSong: Song | null
     isPlaying: boolean

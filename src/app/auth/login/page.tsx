@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
 import { fadeIn } from '@/components/motion/variants'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Music, ArrowLeft } from 'lucide-react'
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -67,12 +67,22 @@ function LoginForm() {
             variants={fadeIn}
             initial="initial"
             animate="animate"
-            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-background p-4 relative overflow-hidden"
+            className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-sidebar to-background p-4 relative overflow-hidden"
         >
             {/* Background decorative elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] opacity-30 animate-pulse" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/30 rounded-full blur-[100px] opacity-30 animate-pulse delay-1000" />
+            </div>
+
+
+            <div className="flex items-center gap-3 mb-8 relative z-10">
+                <div className="p-3 bg-gradient-to-r from-primary to-purple-600 rounded-xl shadow-lg shadow-primary/25">
+                    <Music className="h-7 w-7 text-primary-foreground" />
+                </div>
+                <span className="text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
+                    Music Party
+                </span>
             </div>
 
             <MotionCard
@@ -167,6 +177,17 @@ function LoginForm() {
                             Register
                         </Link>
                     </div>
+
+
+
+                    {/* Back to Landing Page */}
+                    <Link
+                        href="/"
+                        className="flex items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors group"
+                    >
+                        <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-sm font-medium">Back to Home</span>
+                    </Link>
                 </CardContent>
             </MotionCard>
         </MotionDiv>
@@ -175,7 +196,7 @@ function LoginForm() {
 
 function LoginLoading() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-background">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-sidebar to-background">
             <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span>Loading...</span>

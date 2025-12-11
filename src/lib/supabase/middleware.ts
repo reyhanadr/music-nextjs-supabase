@@ -104,6 +104,24 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
+    // Redirect authenticated users from landing page to dashboard
+    if (user && pathname === '/') {
+        // Check if profile is complete first
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', user.id)
+            .single()
+
+        const url = request.nextUrl.clone()
+        if (!profile?.username) {
+            url.pathname = '/auth/complete-profile'
+        } else {
+            url.pathname = '/dashboard'
+        }
+        return NextResponse.redirect(url)
+    }
+
     return supabaseResponse
 }
 
