@@ -5,8 +5,7 @@ import { Navigation } from '@/components/layout/Navigation'
 import { AddSongDialog } from '@/components/songs/AddSongDialog'
 import { EditSongDialog } from '@/components/songs/EditSongDialog'
 import { SongCard } from '@/components/songs/SongCard'
-import { MusicPlayer } from '@/components/player/MusicPlayer'
-import { usePlayer } from '@/hooks/usePlayer'
+import { useGlobalPlayer } from '@/contexts/PlayerContext'
 import { useAuth } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import {
@@ -36,7 +35,7 @@ export default function SongsPage() {
     const { user } = useAuth()
     const supabase = createClient()
 
-    const player = usePlayer()
+    const player = useGlobalPlayer()
 
     const fetchSongs = async () => {
         setLoading(true)
@@ -155,7 +154,6 @@ export default function SongsPage() {
                             <SongCard
                                 key={song.id}
                                 song={song}
-                                onPlay={player.playSong}
                                 onEdit={setEditingSong}
                                 onDelete={setDeletingSong}
                                 isOwner={song.user_id === user?.id}
@@ -165,21 +163,7 @@ export default function SongsPage() {
                 )}
             </main>
 
-            <MusicPlayer
-                currentSong={player.currentSong}
-                isPlaying={player.isPlaying}
-                currentTime={player.currentTime}
-                duration={player.duration}
-                volume={player.volume}
-                onPlayPause={player.playPause}
-                onNext={player.next}
-                onPrevious={player.previous}
-                onSeek={player.seek}
-                onVolumeChange={player.setVolume}
-                onProgress={player.handleProgress}
-                onDuration={player.handleDuration}
-                onEnded={player.handleEnded}
-            />
+
 
             <EditSongDialog
                 song={editingSong}
@@ -209,6 +193,6 @@ export default function SongsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </MotionDiv>
+        </MotionDiv >
     )
 }

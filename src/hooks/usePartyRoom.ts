@@ -138,6 +138,29 @@ export function usePartyRoom(roomId: string) {
     const leaveRoom = useCallback(async () => {
         if (!user?.id) return
 
+        // If host, stop playback and reset time, and notify others
+        if (isHost) {
+            // Broadcast host left event to all users
+            if (broadcastChannelRef.current) {
+                try {
+                    broadcastChannelRef.current.send({
+                        type: 'broadcast',
+                        event: 'host-left',
+                        payload: {
+                            timestamp: Date.now()
+                        }
+                    })
+                } catch (error) {
+                    console.error('Host left broadcast error:', error)
+                }
+            }
+
+            await supabase
+                .from('rooms')
+                .update({ is_playing: false, current_time: 0 })
+                .eq('id', roomId)
+        }
+
         await supabase
             .from('room_users')
             .delete()
@@ -145,7 +168,7 @@ export function usePartyRoom(roomId: string) {
             .eq('user_id', user.id)
 
         router.push('/party')
-    }, [roomId, user, supabase, router])
+    }, [roomId, user, supabase, router, isHost])
 
     // Update room state
     const updateRoomState = useCallback(async (updates: Partial<Room>) => {
@@ -224,6 +247,20 @@ export function usePartyRoom(roomId: string) {
         })
     }, [room, playlist, updateRoomState])
 
+    // Play specific song from playlist
+    const playSong = useCallback((songId: string) => {
+        if (!playlist.length) return
+
+        const song = playlist.find(s => s.id === songId)
+        if (!song) return
+
+        updateRoomState({
+            current_song_id: song.id,
+            current_time: 0,
+            is_playing: true,
+        })
+    }, [playlist, updateRoomState])
+
     // Subscribe to room changes
     useEffect(() => {
         if (!user?.id) {
@@ -287,12 +324,23 @@ export function usePartyRoom(roomId: string) {
                     window.dispatchEvent(event)
                 }
             })
+            .on('broadcast', { event: 'host-left' }, () => {
+                // Notify party room page that host has left
+                if (!isHost) {
+                    const event = new CustomEvent('host-left', {
+                        detail: { timestamp: Date.now() }
+                    })
+                    window.dispatchEvent(event)
+                }
+            })
             .on('presence', { event: 'sync' }, () => {
                 const state = roomChannel.presenceState()
                 const online = Object.values(state).flat()
                 // Force new array reference for React re-render
                 setPresenceUsers([...online])
                 console.log('🟢 Presence synced:', online.length, 'online')
+                // Re-fetch users from DB to ensure list is populated for filtering
+                fetchUsers()
             })
             .on('presence', { event: 'join' }, () => {
                 // Sync will be triggered automatically
@@ -362,6 +410,7 @@ export function usePartyRoom(roomId: string) {
         broadcastProgress,
         nextSong,
         previousSong,
+        playSong,
         leaveRoom,
     }
 }

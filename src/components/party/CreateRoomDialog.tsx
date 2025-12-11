@@ -20,8 +20,9 @@ import { Plus, Music } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { MotionDiv, MotionButton } from '@/components/motion/wrappers'
-import { slideIn, staggerContainer, scaleUp } from '@/components/motion/variants'
-import { AnimatePresence } from 'framer-motion'
+import { MarqueeText } from '@/components/ui/marquee-text'
+import { extractYouTubeId, getYouTubeThumbnail } from '@/lib/youtube'
+import Image from 'next/image'
 
 interface CreateRoomDialogProps {
     onRoomCreated?: () => void
@@ -138,25 +139,56 @@ export function CreateRoomDialog({ onRoomCreated }: CreateRoomDialogProps) {
                                         key={song.id}
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.05 }}
+                                        transition={{ delay: index * 0.03 }}
                                         onClick={() => toggleSong(song.id)}
-                                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${selectedSongs.includes(song.id)
+                                        className={`flex items-center gap-3 p-2 sm:p-3 rounded-lg cursor-pointer transition-all border overflow-hidden ${selectedSongs.includes(song.id)
                                             ? 'bg-primary/10 border-primary/40 shadow-[0_0_10px_-3px_var(--primary)]'
                                             : 'bg-card/50 hover:bg-card border-transparent hover:border-sidebar-foreground/10'
                                             }`}
                                     >
-                                        <Music className={`h-4 w-4 flex-shrink-0 transition-colors ${selectedSongs.includes(song.id) ? 'text-primary' : 'text-muted-foreground'}`} />
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`font-medium truncate ${selectedSongs.includes(song.id) ? 'text-foreground' : 'text-muted-foreground'}`}>{song.title}</p>
-                                            {song.artist && <p className="text-xs text-muted-foreground/70 truncate">{song.artist}</p>}
+                                        {/* Song Thumbnail */}
+                                        <div className="relative h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-md overflow-hidden bg-secondary/50">
+                                            {(() => {
+                                                const videoId = extractYouTubeId(song.youtube_url)
+                                                const thumbnail = videoId ? getYouTubeThumbnail(videoId) : null
+                                                return thumbnail ? (
+                                                    <Image
+                                                        src={thumbnail}
+                                                        alt={song.title}
+                                                        fill
+                                                        className="object-cover"
+                                                        sizes="48px"
+                                                    />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center">
+                                                        <Music className="h-5 w-5 text-muted-foreground" />
+                                                    </div>
+                                                )
+                                            })()}
                                         </div>
+
+                                        {/* Song Info */}
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                            <MarqueeText
+                                                text={song.title}
+                                                className={`font-medium text-sm sm:text-base ${selectedSongs.includes(song.id) ? 'text-foreground' : 'text-muted-foreground'}`}
+                                            />
+                                            {song.artist && (
+                                                <MarqueeText
+                                                    text={song.artist}
+                                                    className="text-xs text-muted-foreground/70"
+                                                />
+                                            )}
+                                        </div>
+
+                                        {/* Selection Badge */}
                                         {selectedSongs.includes(song.id) && (
                                             <MotionDiv
                                                 initial={{ scale: 0 }}
                                                 animate={{ scale: 1 }}
                                                 className="flex-shrink-0"
                                             >
-                                                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                                                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30 text-xs">
                                                     {selectedSongs.indexOf(song.id) + 1}
                                                 </Badge>
                                             </MotionDiv>

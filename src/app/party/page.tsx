@@ -6,11 +6,25 @@ import { CreateRoomDialog } from '@/components/party/CreateRoomDialog'
 import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { createClient } from '@/lib/supabase/client'
-import { Users, Music, Play } from 'lucide-react'
+import { Users, Music, Play, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { MotionDiv, MotionCard } from '@/components/motion/wrappers'
+import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
 import { staggerContainer, slideUp, scaleUp, fadeIn } from '@/components/motion/variants'
+import { useAuth } from '@/hooks/useAuth'
+import { EditRoomDialog } from '@/components/party/EditRoomDialog'
+import { toast } from 'sonner'
 
 interface RoomWithUsers {
     id: string
@@ -29,6 +43,7 @@ export default function PartyPage() {
     const [rooms, setRooms] = useState<RoomWithUsers[]>([])
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
+    const { user } = useAuth()
 
     const fetchRooms = async () => {
         setLoading(true)
@@ -39,6 +54,27 @@ export default function PartyPage() {
 
         if (data) setRooms(data as RoomWithUsers[])
         setLoading(false)
+    }
+
+    const deleteRoom = async (roomId: string) => {
+        // First delete all room_users
+        await supabase
+            .from('room_users')
+            .delete()
+            .eq('room_id', roomId)
+
+        // Then delete the room
+        const { error } = await supabase
+            .from('rooms')
+            .delete()
+            .eq('id', roomId)
+
+        if (error) {
+            toast.error(error.message)
+        } else {
+            toast.success('Room deleted successfully!')
+            fetchRooms()
+        }
     }
 
     useEffect(() => {
@@ -148,6 +184,47 @@ export default function PartyPage() {
                                             Join Room
                                         </Button>
                                     </Link>
+                                    {user && room.host_id === user.id && (
+                                        <div className="flex gap-2 mt-3 sm:opacity-0 sm:group-hover:opacity-100 transition-all sm:transform sm:translate-y-2 sm:group-hover:translate-y-0">
+                                            <EditRoomDialog
+                                                room={room}
+                                                onRoomUpdated={fetchRooms}
+                                            />
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="flex-1 border-destructive/20 hover:bg-destructive/10 text-destructive/80 hover:text-destructive h-8"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        <span className="hidden md:inline">Delete</span>
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-primary/20 text-foreground">
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle className="text-foreground">
+                                                            Delete Room?
+                                                        </AlertDialogTitle>
+                                                        <AlertDialogDescription className="text-muted-foreground">
+                                                            This action cannot be undone. All users will be removed and the room &quot;{room.name}&quot; will be permanently deleted.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel className="border-secondary/30 hover:bg-secondary/20">
+                                                            Cancel
+                                                        </AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            className="bg-destructive hover:bg-destructive/90 text-white"
+                                                            onClick={() => deleteRoom(room.id)}
+                                                        >
+                                                            Delete Room
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </MotionCard>
                         ))}

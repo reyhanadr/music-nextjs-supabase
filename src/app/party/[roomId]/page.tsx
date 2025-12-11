@@ -17,6 +17,7 @@ import Image from 'next/image'
 import YouTube, { YouTubePlayer } from 'react-youtube'
 import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
 import { slideUp, staggerContainer, scaleUp, hoverScale, slideIn } from '@/components/motion/variants'
+import { toast } from 'sonner'
 
 export default function PartyRoomPage() {
     const params = useParams()
@@ -29,6 +30,7 @@ export default function PartyRoomPage() {
     const [volume, setVolume] = useState(80)
     const [isLoading, setIsLoading] = useState(false)
     const [isSeeking, setIsSeeking] = useState(false)
+    const [isSyncing, setIsSyncing] = useState(false) // For initial sync loading
     const intervalRef = useRef<NodeJS.Timeout | null>(null)
     const playerRef = useRef<YouTube>(null)
     const lastVideoIdRef = useRef<string | null>(null)
@@ -48,6 +50,7 @@ export default function PartyRoomPage() {
         seekTo,
         nextSong,
         previousSong,
+        playSong,
         leaveRoom,
         updateCurrentTime,
         broadcastProgress,
@@ -64,6 +67,22 @@ export default function PartyRoomPage() {
                 clearInterval(intervalRef.current)
                 intervalRef.current = null
             }
+        }
+    }, [])
+
+    // Listen for host-left event and show toast notification
+    useEffect(() => {
+        const handleHostLeft = () => {
+            toast.warning('Host has left the party room. Music paused and time reset to 0.', {
+                duration: 5000,
+                position: 'top-center',
+            })
+        }
+
+        window.addEventListener('host-left', handleHostLeft)
+
+        return () => {
+            window.removeEventListener('host-left', handleHostLeft)
         }
     }, [])
 
@@ -128,9 +147,10 @@ export default function PartyRoomPage() {
                 ytPlayer.setVolume(volume)
             }
 
-            // Delay initial sync to ensure room state is fully loaded
-            if (room && !hasInitialSyncRef.current) {
+            // Initial sync for non-host users joining
+            if (room && !hasInitialSyncRef.current && !isHost) {
                 hasInitialSyncRef.current = true
+                setIsSyncing(true) // Show syncing overlay
 
                 // Use setTimeout to ensure sync happens after player is completely ready
                 setTimeout(() => {
@@ -138,6 +158,7 @@ export default function PartyRoomPage() {
                         // Double check player is still valid and ready
                         if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') {
                             console.warn('Player not ready for sync')
+                            setIsSyncing(false)
                             return
                         }
 
@@ -152,20 +173,29 @@ export default function PartyRoomPage() {
                         if (room.is_playing && typeof ytPlayer.playVideo === 'function') {
                             ytPlayer.playVideo()
                         } else if (!room.is_playing && typeof ytPlayer.pauseVideo === 'function') {
-                            // Explicitly pause if room is not playing
                             ytPlayer.pauseVideo()
                         }
+
+                        // Clear syncing state after a brief moment
+                        setTimeout(() => {
+                            setIsSyncing(false)
+                        }, 1500)
                     } catch (err) {
                         console.error('Error syncing on join:', err)
+                        setIsSyncing(false)
                     }
                 }, 1000) // 1000ms delay for better stability
+            } else if (room && !hasInitialSyncRef.current && isHost) {
+                // Host doesn't need syncing
+                hasInitialSyncRef.current = true
             }
 
             startTimeTracking(ytPlayer)
         } catch (error) {
             console.error('Error initializing player:', error)
+            setIsSyncing(false)
         }
-    }, [volume, room, startTimeTracking])
+    }, [volume, room, isHost, startTimeTracking])
 
     // Player state change handler
     const onPlayerStateChange = useCallback((event: any) => {
@@ -490,12 +520,20 @@ export default function PartyRoomPage() {
                                         className="object-cover opacity-90"
                                     />
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
 
                                 {/* Loading overlay */}
                                 {isLoading && (
                                     <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
                                         <Loader2 className="h-12 w-12 text-primary animate-spin" />
+                                    </div>
+                                )}
+
+                                {/* Syncing overlay for new joiners */}
+                                {isSyncing && (
+                                    <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center z-10 gap-3">
+                                        <Loader2 className="h-12 w-12 text-primary animate-spin" />
+                                        <span className="text-muted-foreground text-sm font-medium animate-pulse">Syncing to live playback...</span>
                                     </div>
                                 )}
                             </div>
@@ -611,32 +649,83 @@ export default function PartyRoomPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2 max-h-80 overflow-y-auto px-2">
-                                {playlist.map((song, index) => (
-                                    <MotionDiv
-                                        key={song.id}
-                                        variants={slideIn}
-                                        viewport={{ once: true }}
-                                        className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${song.id === currentSong.id
-                                            ? 'bg-primary/10 border border-primary/30'
-                                            : 'bg-card/30 hover:bg-card/50 border border-transparent'
-                                            }`}
-                                    >
-                                        <span className={`text-sm w-6 font-mono ${song.id === currentSong.id ? 'text-primary' : 'text-muted-foreground'}`}>{index + 1}</span>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`font-medium truncate ${song.id === currentSong.id ? 'text-primary' : 'text-foreground'}`}>{song.title}</p>
-                                            {song.artist && (
-                                                <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
-                                            )}
-                                        </div>
-                                        {song.id === currentSong.id && room.is_playing && (
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-1 h-3 bg-primary animate-pulse" />
-                                                <div className="w-1 h-4 bg-primary animate-pulse" style={{ animationDelay: '0.2s' }} />
-                                                <div className="w-1 h-3 bg-primary animate-pulse" style={{ animationDelay: '0.4s' }} />
+                                {playlist.map((song, index) => {
+                                    const songVideoId = extractYouTubeId(song.youtube_url)
+                                    const songThumbnail = songVideoId ? getYouTubeThumbnail(songVideoId) : null
+                                    const isCurrentSong = song.id === currentSong.id
+                                    const isCurrentPlaying = isCurrentSong && room.is_playing
+
+                                    const handlePlaylistItemClick = () => {
+                                        if (isCurrentSong) {
+                                            // Toggle play/pause for current song
+                                            handlePlayPause()
+                                        } else {
+                                            // Play this song
+                                            playSong(song.id)
+                                        }
+                                    }
+
+                                    return (
+                                        <MotionDiv
+                                            key={song.id}
+                                            variants={slideIn}
+                                            viewport={{ once: true }}
+                                            onClick={handlePlaylistItemClick}
+                                            className={`flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer group ${isCurrentSong
+                                                ? 'bg-primary/10 border border-primary/30'
+                                                : 'bg-card/30 hover:bg-card/50 border border-transparent'
+                                                }`}
+                                        >
+                                            {/* Play button overlay on thumbnail */}
+                                            <div className="relative w-10 h-10 flex-shrink-0">
+                                                {songThumbnail ? (
+                                                    <>
+                                                        <div className="relative w-10 h-10 rounded-md overflow-hidden">
+                                                            <Image
+                                                                src={songThumbnail}
+                                                                alt={song.title}
+                                                                fill
+                                                                className="object-cover"
+                                                            />
+                                                        </div>
+                                                        {/* Play/Pause overlay */}
+                                                        <div className={`absolute inset-0 rounded-md flex items-center justify-center transition-opacity ${isCurrentPlaying ? 'bg-black/40 opacity-100' : 'bg-black/40 opacity-0 group-hover:opacity-100'}`}>
+                                                            {isCurrentPlaying ? (
+                                                                <Pause className="h-5 w-5 text-white" />
+                                                            ) : (
+                                                                <Play className="h-5 w-5 text-white ml-0.5" />
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center">
+                                                        {isCurrentPlaying ? (
+                                                            <Pause className="h-5 w-5 text-primary" />
+                                                        ) : (
+                                                            <Play className="h-5 w-5 text-muted-foreground ml-0.5" />
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </MotionDiv>
-                                ))}
+
+                                            <span className={`text-sm w-6 font-mono ${isCurrentSong ? 'text-primary' : 'text-muted-foreground'}`}>{index + 1}</span>
+
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`font-medium truncate ${isCurrentSong ? 'text-primary' : 'text-foreground'}`}>{song.title}</p>
+                                                {song.artist && (
+                                                    <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
+                                                )}
+                                            </div>
+                                            {isCurrentPlaying && (
+                                                <div className="flex items-center gap-1">
+                                                    <div className="w-1 h-3 bg-primary animate-pulse" />
+                                                    <div className="w-1 h-4 bg-primary animate-pulse" style={{ animationDelay: '0.2s' }} />
+                                                    <div className="w-1 h-3 bg-primary animate-pulse" style={{ animationDelay: '0.4s' }} />
+                                                </div>
+                                            )}
+                                        </MotionDiv>
+                                    )
+                                })}
                             </CardContent>
                         </MotionCard>
                     </div>

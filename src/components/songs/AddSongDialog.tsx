@@ -129,8 +129,8 @@ export function AddSongDialog({ onSongAdded }: AddSongDialogProps) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-foreground/80">Duration</Label>
-                        <p className="text-xs text-muted-foreground">Enter song duration (optional)</p>
+                        <Label className="text-foreground/80">Duration <span className="text-primary">*</span></Label>
+                        <p className="text-xs text-muted-foreground">Enter song duration</p>
                         <div className="flex gap-2 items-center">
                             <div className="flex-1">
                                 <Input
@@ -142,6 +142,7 @@ export function AddSongDialog({ onSongAdded }: AddSongDialogProps) {
                                     value={formData.duration_minutes}
                                     onChange={(e) => setFormData(prev => ({ ...prev, duration_minutes: e.target.value }))}
                                     className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20"
+                                    required
                                 />
                             </div>
                             <span className="text-muted-foreground text-sm">min</span>

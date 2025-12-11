@@ -13,6 +13,7 @@ import Image from 'next/image'
 import YouTube, { YouTubePlayer } from 'react-youtube'
 import { MotionDiv, MotionButton } from '@/components/motion/wrappers'
 import { slideUp } from '@/components/motion/variants'
+import { MarqueeText } from '@/components/ui/marquee-text'
 
 interface MusicPlayerProps {
     currentSong: Song | null
@@ -51,6 +52,7 @@ export function MusicPlayer({
     const intervalRef = useRef<NodeJS.Timeout | null>(null)
     const playerRef = useRef<YouTube>(null)
     const lastVideoId = useRef<string | null>(null)
+    const endTriggeredRef = useRef(false) // Prevent duplicate onEnded calls
 
     // Get video ID
     const videoId = currentSong ? extractYouTubeId(currentSong.youtube_url) : null
@@ -72,6 +74,7 @@ export function MusicPlayer({
             setIsPlayerReady(false)
             setPlayer(null)
             setLocalTime(0)
+            endTriggeredRef.current = false // Reset end trigger on new video
             if (intervalRef.current) {
                 clearInterval(intervalRef.current)
                 intervalRef.current = null
@@ -85,21 +88,65 @@ export function MusicPlayer({
             clearInterval(intervalRef.current)
         }
 
-        // Start new interval for time tracking
+        // Start new interval for time tracking - using 250ms for better background detection
         intervalRef.current = setInterval(() => {
             try {
                 if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
                     const time = ytPlayer.getCurrentTime()
+                    const ytDuration = typeof ytPlayer.getDuration === 'function' ? ytPlayer.getDuration() : 0
+
                     if (typeof time === 'number' && !isNaN(time)) {
                         setLocalTime(time)
                         onProgress(time)
+
+                        // Fallback end detection for background tabs
+                        // Check if within 0.5 second of end
+                        if (ytDuration > 0 && time >= ytDuration - 0.5 && time > 0 && !endTriggeredRef.current) {
+                            console.log('Background end detection: triggering onEnded')
+                            endTriggeredRef.current = true
+                            onEnded()
+                        }
                     }
                 }
             } catch (error) {
                 // Player might be destroyed, ignore errors
             }
-        }, 500)
-    }, [onProgress])
+        }, 250) // 250ms for more responsive background detection
+    }, [onProgress, onEnded])
+
+    // Handle visibility change to check for ended state when returning to tab
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && player && isPlayerReady) {
+                try {
+                    const playerState = player.getPlayerState()
+                    const currentTime = player.getCurrentTime()
+                    const duration = player.getDuration()
+
+                    // Check if video ended while we were away
+                    if (playerState === 0 && !endTriggeredRef.current) {
+                        console.log('Visibility change: ended state detected')
+                        endTriggeredRef.current = true
+                        onEnded()
+                    }
+
+                    // Also check if we're at the end of the video
+                    if (duration > 0 && currentTime >= duration - 0.5 && !endTriggeredRef.current) {
+                        console.log('Visibility change: near end detected')
+                        endTriggeredRef.current = true
+                        onEnded()
+                    }
+                } catch (error) {
+                    // Ignore errors
+                }
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+        }
+    }, [player, isPlayerReady, onEnded])
 
     const onPlayerReady = useCallback((event: { target: YouTubePlayer }) => {
         try {
@@ -304,14 +351,16 @@ export function MusicPlayer({
                                 />
                             </div>
                         )}
-                        <div className="min-w-0 flex-1">
-                            <h3 className="text-foreground text-sm md:text-base font-semibold truncate leading-tight">
-                                {currentSong.title}
-                            </h3>
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                            <MarqueeText
+                                text={currentSong.title}
+                                className="text-foreground text-sm md:text-base font-semibold leading-tight"
+                            />
                             {currentSong.artist && (
-                                <p className="text-muted-foreground text-xs md:text-sm truncate mt-0.5 font-medium">
-                                    {currentSong.artist}
-                                </p>
+                                <MarqueeText
+                                    text={currentSong.artist}
+                                    className="text-muted-foreground text-xs md:text-sm mt-0.5 font-medium"
+                                />
                             )}
                         </div>
                     </div>

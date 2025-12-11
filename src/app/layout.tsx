@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   description: "Share and enjoy music together in real-time party rooms",
 };
 
+import { PlayerProvider } from "@/contexts/PlayerContext";
+import { GlobalMusicPlayer } from "@/components/player/GlobalMusicPlayer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,8 +21,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased bg-slate-950 text-white`}>
-        {children}
-        <Toaster richColors position="top-center" />
+        <PlayerProvider>
+          {children}
+          <GlobalMusicPlayer />
+          <Toaster richColors position="top-center" />
+        </PlayerProvider>
       </body>
     </html>
   );
