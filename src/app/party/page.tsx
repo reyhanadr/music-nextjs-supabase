@@ -119,7 +119,25 @@ export default function PartyPage() {
         >
             <Navigation />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
+            {/* Festive background decorative elements */}
+            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                {/* Top left - primary glow with pulse */}
+                <div className="absolute top-[-10%] left-[-5%] w-[30%] h-[30%] bg-primary/30 rounded-full blur-[80px] opacity-25 animate-pulse" />
+                {/* Top right - purple accent */}
+                <div className="absolute top-[5%] right-[-5%] w-[25%] h-[25%] bg-purple-500/25 rounded-full blur-[70px] opacity-50" />
+                {/* Center left - pink glow */}
+                <div className="absolute top-[40%] left-[-8%] w-[20%] h-[20%] bg-pink-500/20 rounded-full blur-[60px] opacity-45" />
+                {/* Center right - cyan/teal accent */}
+                <div className="absolute top-[35%] right-[5%] w-[22%] h-[22%] bg-cyan-500/15 rounded-full blur-[70px] opacity-45" />
+                {/* Bottom left - accent glow */}
+                <div className="absolute bottom-[-5%] left-[10%] w-[35%] h-[35%] bg-accent/25 rounded-full blur-[90px] opacity-45" />
+                {/* Bottom right - violet glow with pulse */}
+                <div className="absolute bottom-[10%] right-[-10%] w-[28%] h-[28%] bg-violet-500/20 rounded-full blur-[80px] opacity-45 animate-pulse" style={{ animationDelay: '1s' }} />
+                {/* Center floating glow */}
+                <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] opacity-45" />
+            </div>
+
+            <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
                 <MotionDiv variants={slideUp} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-400 to-secondary-foreground bg-clip-text text-transparent">

@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
 import { fadeIn } from '@/components/motion/variants'
-import { Loader2, Music, ArrowLeft } from 'lucide-react'
+import { Loader2, Music, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -25,6 +25,7 @@ import {
 
 export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
 
     const form = useForm<RegisterFormData>({
@@ -153,12 +154,25 @@ export default function RegisterPage() {
                                     <FormItem>
                                         <FormLabel className="text-foreground/80">Password</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                type="password"
-                                                placeholder="••••••••"
-                                                className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 h-12"
-                                                {...field}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    type={showPassword ? 'text' : 'password'}
+                                                    placeholder="••••••••"
+                                                    className="bg-secondary/50 border-secondary-foreground/10 focus:border-primary/50 focus:ring-primary/20 h-12 pr-12"
+                                                    {...field}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                    {showPassword ? (
+                                                        <EyeOff className="h-5 w-5" />
+                                                    ) : (
+                                                        <Eye className="h-5 w-5" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                         <p className="text-xs text-muted-foreground">Minimum 6 characters</p>

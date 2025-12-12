@@ -27,7 +27,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form'
-import { Loader2, Mail, Lock, Pencil } from 'lucide-react'
+import { Loader2, Mail, Lock, Pencil, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface AccountInfoFormProps {
@@ -40,6 +40,8 @@ export function AccountInfoForm({ currentEmail, onUpdate }: AccountInfoFormProps
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
     const [emailLoading, setEmailLoading] = useState(false)
     const [passwordLoading, setPasswordLoading] = useState(false)
+    const [showNewPassword, setShowNewPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     const emailForm = useForm<ChangeEmailFormData>({
         resolver: zodResolver(changeEmailSchema),
@@ -139,7 +141,7 @@ export function AccountInfoForm({ currentEmail, onUpdate }: AccountInfoFormProps
                                                     <Input
                                                         type="email"
                                                         placeholder="newemail@example.com"
-                                                        className="bg-secondary/50 border-secondary-foreground/10 h-11"
+                                                        className="bg-background border-input text-foreground focus:border-primary/50 focus:ring-primary/20 h-11"
                                                         {...field}
                                                     />
                                                 </FormControl>
@@ -214,12 +216,25 @@ export function AccountInfoForm({ currentEmail, onUpdate }: AccountInfoFormProps
                                             <FormItem>
                                                 <FormLabel className="text-sm font-medium text-foreground">New Password</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        type="password"
-                                                        placeholder="••••••••"
-                                                        className="bg-secondary/50 border-secondary-foreground/10 h-11"
-                                                        {...field}
-                                                    />
+                                                    <div className="relative">
+                                                        <Input
+                                                            type={showNewPassword ? 'text' : 'password'}
+                                                            placeholder="••••••••"
+                                                            className="bg-background border-input text-foreground h-11 pr-12"
+                                                            {...field}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            {showNewPassword ? (
+                                                                <EyeOff className="h-5 w-5" />
+                                                            ) : (
+                                                                <Eye className="h-5 w-5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -232,12 +247,25 @@ export function AccountInfoForm({ currentEmail, onUpdate }: AccountInfoFormProps
                                             <FormItem>
                                                 <FormLabel className="text-sm font-medium text-foreground">Confirm Password</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        type="password"
-                                                        placeholder="••••••••"
-                                                        className="bg-secondary/50 border-secondary-foreground/10 h-11"
-                                                        {...field}
-                                                    />
+                                                    <div className="relative">
+                                                        <Input
+                                                            type={showConfirmPassword ? 'text' : 'password'}
+                                                            placeholder="••••••••"
+                                                            className="bg-background border-input text-foreground h-11 pr-12"
+                                                            {...field}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            {showConfirmPassword ? (
+                                                                <EyeOff className="h-5 w-5" />
+                                                            ) : (
+                                                                <Eye className="h-5 w-5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

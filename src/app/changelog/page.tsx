@@ -94,7 +94,13 @@ export default function ChangelogPage() {
             {/* Show different navigation based on auth status */}
             {user ? <Navigation /> : <GuestNavigation />}
 
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
+            {/* Background decorative elements */}
+            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] opacity-20" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/30 rounded-full blur-[100px] opacity-20" />
+            </div>
+
+            <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
                 {/* Header */}
                 <MotionDiv
                     initial={{ opacity: 0, y: 20 }}
