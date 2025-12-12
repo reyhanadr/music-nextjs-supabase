@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRoomChat } from '@/hooks/useRoomChat'
 import { ChatMessageList } from './ChatMessageList'
 import { ChatInputBox } from './ChatInputBox'
 import { Button } from '@/components/ui/button'
@@ -12,18 +11,31 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog'
-import { MessageCircle, X } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { RoomMessage } from '@/types'
 
 interface MobileChatButtonProps {
     roomId: string
     className?: string
+    // Shared chat state from parent
+    messages: RoomMessage[]
+    loading: boolean
+    sending: boolean
+    sendMessage: (message: string) => Promise<void>
+    messagesContainerRef: React.RefObject<HTMLDivElement | null>
 }
 
-export function MobileChatButton({ roomId, className }: MobileChatButtonProps) {
+export function MobileChatButton({
+    className,
+    messages,
+    loading,
+    sending,
+    sendMessage,
+    messagesContainerRef
+}: MobileChatButtonProps) {
     const [open, setOpen] = useState(false)
-    const { messages, loading, sending, sendMessage, messagesContainerRef } = useRoomChat({ roomId })
 
     // Show unread indicator if there are new messages (simple implementation)
     const hasMessages = messages.length > 0

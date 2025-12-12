@@ -12,7 +12,7 @@ export function GlobalMusicPlayer() {
     const isPartyRoute = pathname?.startsWith('/party')
 
     // Also hide on login/register pages
-    const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/' || pathname === '/auth/login' || pathname === '/auth/register' || pathname === '/auth/complete-profile'
+    const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/' || pathname === '/auth/login' || pathname === '/auth/register' || pathname === '/auth/complete-profile' || pathname === '/changelog'
 
     if (isPartyRoute || isAuthRoute) {
         return null

@@ -9,6 +9,7 @@ import { ChatPanel, MobileChatButton } from '@/components/party/chat'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePartyRoom } from '@/hooks/usePartyRoom'
+import { useRoomChat } from '@/hooks/useRoomChat'
 import { useQueue } from '@/contexts/QueueContext'
 import { LogOut, Music, Volume2, Loader2 } from 'lucide-react'
 import { extractYouTubeId, formatTime, getYouTubeThumbnail } from '@/lib/youtube'
@@ -57,6 +58,9 @@ export default function PartyRoomPage() {
         updateCurrentTime,
         broadcastProgress,
     } = usePartyRoom(roomId)
+
+    // Shared chat state for both desktop and mobile chat components
+    const chatState = useRoomChat({ roomId })
 
     // Queue context - disable queue actions in party room
     const { setPartyRoomMode } = useQueue()
@@ -746,12 +750,28 @@ export default function PartyRoomPage() {
                     {/* Sidebar */}
                     <div className="lg:col-span-1 space-y-6">
                         <UsersList users={users} hostId={room.host_id} onlineCount={presenceUsers.length} />
-                        <ChatPanel roomId={roomId} className="hidden lg:flex" />
+                        <ChatPanel
+                            roomId={roomId}
+                            className="hidden lg:flex"
+                            messages={chatState.messages}
+                            loading={chatState.loading}
+                            sending={chatState.sending}
+                            sendMessage={chatState.sendMessage}
+                            messagesContainerRef={chatState.messagesContainerRef}
+                        />
                     </div>
                 </MotionDiv>
 
                 {/* Mobile Chat Button */}
-                <MobileChatButton roomId={roomId} className="lg:hidden" />
+                <MobileChatButton
+                    roomId={roomId}
+                    className="lg:hidden"
+                    messages={chatState.messages}
+                    loading={chatState.loading}
+                    sending={chatState.sending}
+                    sendMessage={chatState.sendMessage}
+                    messagesContainerRef={chatState.messagesContainerRef}
+                />
             </main>
         </div>
     )

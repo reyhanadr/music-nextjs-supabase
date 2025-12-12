@@ -68,6 +68,12 @@ export function useAuth() {
     }, [user, supabase])
 
     const signOut = async () => {
+        // Clear music player localStorage data
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('music-player-queue')
+            localStorage.removeItem('music-player-state')
+        }
+
         await supabase.auth.signOut()
         setProfile(null)
         router.push('/login')

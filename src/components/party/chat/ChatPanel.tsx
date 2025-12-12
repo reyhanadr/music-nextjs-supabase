@@ -1,19 +1,31 @@
 'use client'
 
-import { useRoomChat } from '@/hooks/useRoomChat'
 import { ChatMessageList } from './ChatMessageList'
 import { ChatInputBox } from './ChatInputBox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RoomMessage } from '@/types'
 
 interface ChatPanelProps {
     roomId: string
     className?: string
+    // Shared chat state from parent
+    messages: RoomMessage[]
+    loading: boolean
+    sending: boolean
+    sendMessage: (message: string) => Promise<void>
+    messagesContainerRef: React.RefObject<HTMLDivElement | null>
 }
 
-export function ChatPanel({ roomId, className }: ChatPanelProps) {
-    const { messages, loading, sending, sendMessage, messagesContainerRef } = useRoomChat({ roomId })
+export function ChatPanel({
+    className,
+    messages,
+    loading,
+    sending,
+    sendMessage,
+    messagesContainerRef
+}: ChatPanelProps) {
 
     return (
         <Card className={cn(
