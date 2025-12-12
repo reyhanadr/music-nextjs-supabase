@@ -30,11 +30,13 @@ export function GlobalMusicPlayer() {
                 currentTime={player.currentTime}
                 duration={player.duration}
                 volume={player.volume}
+                isRepeat={player.isRepeat}
                 onPlayPause={player.playPause}
                 onNext={player.next}
                 onPrevious={player.previous}
                 onSeek={player.seek}
                 onVolumeChange={player.setVolume}
+                onToggleRepeat={player.toggleRepeat}
                 onProgress={player.handleProgress}
                 onDuration={player.handleDuration}
                 onEnded={player.handleEnded}

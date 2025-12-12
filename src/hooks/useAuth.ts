@@ -73,11 +73,17 @@ export function useAuth() {
         router.push('/login')
     }
 
+    // Optimistic update function for profile
+    const updateProfileOptimistic = (updates: Partial<Profile>) => {
+        setProfile(prev => prev ? { ...prev, ...updates } : null)
+    }
+
     return {
         user,
         profile,
         loading,
         signOut,
-        supabase
+        supabase,
+        updateProfile: updateProfileOptimistic
     }
 }

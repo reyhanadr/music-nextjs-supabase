@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { Song } from '@/types'
 import { toast } from 'sonner'
-import { Music, Plus, ChevronUp, ChevronDown, X, Pencil } from 'lucide-react'
+import { Music, Plus, ChevronUp, ChevronDown, X, Edit } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { MotionDiv } from '@/components/motion/wrappers'
 import { MarqueeText } from '@/components/ui/marquee-text'
@@ -132,7 +132,7 @@ export function EditRoomDialog({ room, onRoomUpdated }: EditRoomDialogProps) {
                     size="sm"
                     className="flex-1 border-primary/20 hover:bg-primary/10 hover:text-primary text-muted-foreground h-8"
                 >
-                    <Pencil className="h-3 w-3" />
+                    <Edit className="h-3 w-3" />
                     <span className="hidden md:inline">Edit</span>
                 </Button>
             </DialogTrigger>

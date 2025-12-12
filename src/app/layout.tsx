@@ -84,7 +84,7 @@ export default function RootLayout({
         <PlayerProvider>
           {children}
           <GlobalMusicPlayer />
-          <Toaster richColors position="top-center" />
+          <Toaster richColors position="top-right" />
         </PlayerProvider>
       </body>
     </html>

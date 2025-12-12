@@ -1,14 +1,16 @@
 'use client'
 
 import { useSongPlayback } from '@/hooks/useSongPlayback'
+import { useQueue } from '@/contexts/QueueContext'
 import { Song } from '@/types'
 import { Button } from '@/components/ui/button'
-import { Play, Pause, Edit, Trash2 } from 'lucide-react'
+import { Play, Pause, Edit, Trash2, ListPlus } from 'lucide-react'
 import Image from 'next/image'
 import { extractYouTubeId, getYouTubeThumbnail } from '@/lib/youtube'
 import { MotionCard, MotionButton } from '@/components/motion/wrappers'
 import { scaleUp } from '@/components/motion/variants'
 import { MarqueeText } from '@/components/ui/marquee-text'
+import { toast } from 'sonner'
 
 interface SongCardProps {
     song: Song
@@ -20,8 +22,23 @@ interface SongCardProps {
 
 export function SongCard({ song, onEdit, onDelete, isOwner }: Omit<SongCardProps, 'onPlay'> & { onPlay?: never }) {
     const { isCurrentSong, isPlaying, togglePlay } = useSongPlayback(song)
+    const { addToQueue, isInPartyRoom, queue } = useQueue()
     const videoId = extractYouTubeId(song.youtube_url)
     const thumbnail = videoId ? getYouTubeThumbnail(videoId) : '/placeholder-music.jpg'
+
+    // Handle add to queue with toast notification
+    const handleAddToQueue = (e: React.MouseEvent) => {
+        e.stopPropagation()
+
+        // Check if already in queue
+        if (queue.some(s => s.id === song.id)) {
+            toast.info('Song is already in queue')
+            return
+        }
+
+        addToQueue(song)
+        toast.success(`"${song.title}" added to queue`)
+    }
 
     return (
         <MotionCard
@@ -69,29 +86,46 @@ export function SongCard({ song, onEdit, onDelete, isOwner }: Omit<SongCardProps
                         className="text-sm text-muted-foreground"
                     />
                 )}
-                {isOwner && (
-                    <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                        <Button
+                <div className="flex flex-wrap gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    {/* Add to Queue Button - Hidden in party room */}
+                    {!isInPartyRoom && (
+                        <MotionButton
                             variant="outline"
                             size="sm"
-                            onClick={() => onEdit(song)}
-                            className="flex-1 border-primary/20 hover:bg-primary/10 hover:text-primary text-muted-foreground h-8"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleAddToQueue}
+                            className="flex-1 min-w-[70px] border-primary/20 hover:bg-primary/10 hover:text-primary text-muted-foreground h-8"
                         >
-                            <Edit className="h-3 w-3" />
-                            <span className="hidden md:inline">Edit</span>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onDelete(song)}
-                            className="flex-1 border-destructive/20 hover:bg-destructive/10 text-destructive/80 hover:text-destructive h-8"
-                        >
-                            <Trash2 className="h-3 w-3" />
-                            <span className="hidden md:inline">Delete</span>
-                        </Button>
-                    </div>
-                )}
+                            <ListPlus className="h-3 w-3" />
+                            <span className="hidden lg:inline">Queue</span>
+                        </MotionButton>
+                    )}
+                    {isOwner && (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onEdit(song)}
+                                className="flex-1 min-w-[60px] border-primary/20 hover:bg-primary/10 hover:text-primary text-muted-foreground h-8"
+                            >
+                                <Edit className="h-3 w-3" />
+                                <span className="hidden lg:inline">Edit</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onDelete(song)}
+                                className="flex-1 min-w-[60px] border-destructive/20 hover:bg-destructive/10 text-destructive/80 hover:text-destructive h-8"
+                            >
+                                <Trash2 className="h-3 w-3" />
+                                <span className="hidden lg:inline">Delete</span>
+                            </Button>
+                        </>
+                    )}
+                </div>
             </div>
         </MotionCard>
     )
 }
+

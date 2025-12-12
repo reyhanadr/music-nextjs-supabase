@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MotionDiv, MotionCard, MotionButton, MotionSection } from '@/components/motion/wrappers'
 import { fadeIn, slideUp, staggerContainer, hoverScale, scaleUp } from '@/components/motion/variants'
-import { Music, Play, Users, MessageCircle, Headphones, ArrowRight, Github, ChevronDown } from 'lucide-react'
+import { Music, Play, Users, MessageCircle, Headphones, ArrowRight, Github, ChevronDown, FileText } from 'lucide-react'
 import { AppDemoShowcase } from '@/components/landing/AppDemoShowcase'
 
 const features = [
@@ -400,6 +400,13 @@ export function LandingPage() {
 
                         {/* Links */}
                         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-muted-foreground">
+                            <Link
+                                href="/changelog"
+                                className="flex items-center gap-2 hover:text-primary transition-colors"
+                            >
+                                <FileText className="h-4 w-4" />
+                                Changelog
+                            </Link>
                             <a
                                 href="https://github.com/reyhanadr"
                                 target="_blank"

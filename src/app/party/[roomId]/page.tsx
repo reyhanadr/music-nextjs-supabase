@@ -9,6 +9,7 @@ import { ChatPanel, MobileChatButton } from '@/components/party/chat'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePartyRoom } from '@/hooks/usePartyRoom'
+import { useQueue } from '@/contexts/QueueContext'
 import { LogOut, Music, Volume2, Loader2 } from 'lucide-react'
 import { extractYouTubeId, formatTime, getYouTubeThumbnail } from '@/lib/youtube'
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react'
@@ -56,6 +57,17 @@ export default function PartyRoomPage() {
         updateCurrentTime,
         broadcastProgress,
     } = usePartyRoom(roomId)
+
+    // Queue context - disable queue actions in party room
+    const { setPartyRoomMode } = useQueue()
+
+    // Set party room mode on mount/unmount
+    useEffect(() => {
+        setPartyRoomMode(true)
+        return () => {
+            setPartyRoomMode(false)
+        }
+    }, [setPartyRoomMode])
 
     // Get video ID
     const videoId = currentSong ? extractYouTubeId(currentSong.youtube_url) : null
