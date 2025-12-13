@@ -11,6 +11,8 @@ import {
     Shield,
     Trash2,
     MessageCircle,
+    Radio,
+    TabletSmartphone,
     LucideIcon
 } from 'lucide-react'
 
@@ -29,6 +31,43 @@ export interface ChangelogRelease {
 }
 
 export const changelog: ChangelogRelease[] = [
+    {
+        version: '1.3.0',
+        date: '2025-12-14',
+        title: 'Background Playback & Media Controls',
+        changes: [
+            {
+                type: 'feature',
+                icon: Radio,
+                title: 'Background Playback Hook',
+                description: 'New useBackgroundPlayback hook for reliable audio playback when switching tabs or locking phone.',
+            },
+            {
+                type: 'improvement',
+                icon: Smartphone,
+                title: 'Lock Screen Controls',
+                description: 'Enhanced Media Session API with setPositionState() for seek bar support and hi-res artwork on lock screen.',
+            },
+            {
+                type: 'improvement',
+                icon: TabletSmartphone,
+                title: 'Mobile Safeguards',
+                description: 'Added orientation change and focus/blur handlers to prevent playback interruption on mobile devices.',
+            },
+            {
+                type: 'fix',
+                icon: Bug,
+                title: 'Double-Ended Trigger Prevention',
+                description: 'Fixed songs sometimes skipping twice when ending in background with debounced end detection guards.',
+            },
+            {
+                type: 'fix',
+                icon: Zap,
+                title: 'Queue Auto-Continue',
+                description: 'Fixed queue not auto-playing next song when app is in background. Added timer-based fallback detection.',
+            },
+        ],
+    },
     {
         version: '1.2.0',
         date: '2025-12-13',
