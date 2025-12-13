@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthContext } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Music, Home, LibraryBig, Users, LogOut, Menu, X, Settings, ChevronDown, FileText } from 'lucide-react'
@@ -20,7 +20,8 @@ const navItems = [
 
 export function Navigation() {
     const pathname = usePathname()
-    const { user, profile, signOut } = useAuth()
+    // Profile is immediately available from SSR via AuthContext - no more flicker!
+    const { user, profile, signOut } = useAuthContext()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
     const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)

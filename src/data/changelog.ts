@@ -10,6 +10,7 @@ import {
     Upload,
     Shield,
     Trash2,
+    MessageCircle,
     LucideIcon
 } from 'lucide-react'
 
@@ -28,6 +29,37 @@ export interface ChangelogRelease {
 }
 
 export const changelog: ChangelogRelease[] = [
+    {
+        version: '1.2.0',
+        date: '2025-12-13',
+        title: 'Seamless Auth & Profile Flow',
+        changes: [
+            {
+                type: 'improvement',
+                icon: Zap,
+                title: 'SSR Profile Fetch',
+                description: 'Profile data now fetched server-side, eliminating loading delay on dashboard and navigation.',
+            },
+            {
+                type: 'improvement',
+                icon: User,
+                title: 'Username Consistency',
+                description: 'Header now displays username immediately without flicker from email to username.',
+            },
+            {
+                type: 'fix',
+                icon: MessageCircle,
+                title: 'Chat Optimistic UI',
+                description: 'Messages now display with username & avatar instantly, without "Anonymous" placeholder.',
+            },
+            {
+                type: 'fix',
+                icon: Bug,
+                title: 'Chat Flicker Fix',
+                description: 'Fixed double-render issue when sending chat messages by atomic state replacement.',
+            },
+        ],
+    },
     {
         version: '1.1.0',
         date: '2025-12-12',

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { AuthProvider } from '@/contexts/AuthContext'
 import { Navigation } from '@/components/layout/Navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -78,7 +79,7 @@ function GuestNavigation() {
 }
 
 export default function ChangelogPage() {
-    const { user, loading } = useAuth()
+    const { user, profile, loading } = useAuth()
 
     // Show loading state while checking auth
     if (loading) {
@@ -92,7 +93,13 @@ export default function ChangelogPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-sidebar to-background pb-24">
             {/* Show different navigation based on auth status */}
-            {user ? <Navigation /> : <GuestNavigation />}
+            {user ? (
+                <AuthProvider initialUser={user} initialProfile={profile}>
+                    <Navigation />
+                </AuthProvider>
+            ) : (
+                <GuestNavigation />
+            )}
 
             {/* Background decorative elements */}
             <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">

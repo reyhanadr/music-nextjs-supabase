@@ -80,16 +80,66 @@ export default function PartyPage() {
     useEffect(() => {
         fetchRooms()
 
-        // Subscribe to room changes
-        const channel = supabase
-            .channel('rooms')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+        // Subscribe to room changes - handle updates granularly to avoid flicker
+        const roomsChannel = supabase
+            .channel('rooms-realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rooms' }, () => {
+                // New room added - need full refetch
                 fetchRooms()
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'rooms' }, (payload) => {
+                // Room deleted - remove from state without refetch
+                setRooms(prev => prev.filter(room => room.id !== payload.old.id))
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms' }, (payload) => {
+                // Room updated - only update the specific fields that changed
+                const updatedRoom = payload.new as RoomWithUsers
+                setRooms(prev => prev.map(room =>
+                    room.id === updatedRoom.id
+                        ? {
+                            ...room,
+                            is_playing: updatedRoom.is_playing,
+                            current_song_id: updatedRoom.current_song_id,
+                            current_time: updatedRoom.current_time,
+                            playlist: updatedRoom.playlist,
+                            name: updatedRoom.name,
+                            updated_at: updatedRoom.updated_at
+                        }
+                        : room
+                ))
+            })
+            .subscribe()
+
+        // Subscribe to room_users changes for listener count updates
+        const usersChannel = supabase
+            .channel('room-users-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'room_users' }, async (payload) => {
+                // Get the room_id from the payload
+                const newRecord = payload.new as { room_id?: string } | null
+                const oldRecord = payload.old as { room_id?: string } | null
+                const roomId = newRecord?.room_id || oldRecord?.room_id
+                if (!roomId) return
+
+                // Fetch updated count for this specific room only
+                const { data } = await supabase
+                    .from('room_users')
+                    .select('count')
+                    .eq('room_id', roomId)
+
+                const count = data?.[0]?.count || 0
+
+                // Update only the listener count for this room
+                setRooms(prev => prev.map(room =>
+                    room.id === roomId
+                        ? { ...room, room_users: [{ count }] }
+                        : room
+                ))
             })
             .subscribe()
 
         return () => {
-            supabase.removeChannel(channel)
+            supabase.removeChannel(roomsChannel)
+            supabase.removeChannel(usersChannel)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])

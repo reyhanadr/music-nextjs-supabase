@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RoomMessage } from '@/types'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthContext } from '@/contexts/AuthContext'
 
 interface UseRoomChatOptions {
     roomId: string
@@ -24,7 +24,8 @@ export function useRoomChat({ roomId, limit = 50 }: UseRoomChatOptions): UseRoom
     const [sending, setSending] = useState(false)
     const messagesContainerRef = useRef<HTMLDivElement | null>(null)
     const supabase = createClient()
-    const { user } = useAuth()
+    // Get user and profile from context - profile available for optimistic updates
+    const { user, profile } = useAuthContext()
 
     // Auto-scroll to bottom
     const scrollToBottom = useCallback(() => {
@@ -82,14 +83,19 @@ export function useRoomChat({ roomId, limit = 50 }: UseRoomChatOptions): UseRoom
         const trimmedMessage = message.trim()
         setSending(true)
 
-        // Create optimistic message
+        // Create optimistic message WITH profile data (no more 'Anonymous'!)
         const optimisticMessage: RoomMessage = {
             id: `temp-${Date.now()}`,
             room_id: roomId,
             user_id: user.id,
             message: trimmedMessage,
             created_at: new Date().toISOString(),
-            profiles: undefined // Will be filled by realtime update
+            // Include profile data for immediate display
+            profiles: profile ? {
+                full_name: profile.full_name ?? undefined,
+                username: profile.username ?? undefined,
+                avatar_url: profile.avatar_url ?? undefined
+            } : undefined
         }
 
         // Add optimistic message immediately
@@ -135,50 +141,47 @@ export function useRoomChat({ roomId, limit = 50 }: UseRoomChatOptions): UseRoom
                 async (payload) => {
                     const newMessage = payload.new as any
 
-                    // Don't add if it's our own optimistic message
-                    // Check by user_id and message content to avoid duplicates
+                    // For own messages: replace optimistic with real message atomically
+                    // For other users' messages: just add them
+                    const isOwnMessage = newMessage.user_id === user?.id
+
+                    // Fetch profile for the new message
+                    const { data: profileData } = await supabase
+                        .from('profiles')
+                        .select('full_name, username, avatar_url')
+                        .eq('id', newMessage.user_id)
+                        .single()
+
+                    const messageWithProfile: RoomMessage = {
+                        id: newMessage.id,
+                        room_id: newMessage.room_id,
+                        user_id: newMessage.user_id,
+                        message: newMessage.message,
+                        created_at: newMessage.created_at,
+                        profiles: profileData || undefined
+                    }
+
                     setMessages(prev => {
-                        // Remove optimistic message if exists
-                        const withoutOptimistic = prev.filter(
-                            m => !(m.id.startsWith('temp-') && m.user_id === newMessage.user_id && m.message === newMessage.message)
-                        )
-
-                        // Check if already exists
-                        if (withoutOptimistic.some(m => m.id === newMessage.id)) {
-                            return withoutOptimistic
+                        // Check if this message already exists (by real ID)
+                        if (prev.some(m => m.id === newMessage.id)) {
+                            return prev
                         }
 
-                        // Fetch profile for the new message
-                        const fetchAndAddMessage = async () => {
-                            const { data: profileData } = await supabase
-                                .from('profiles')
-                                .select('full_name, username, avatar_url')
-                                .eq('id', newMessage.user_id)
-                                .single()
-
-                            const messageWithProfile: RoomMessage = {
-                                id: newMessage.id,
-                                room_id: newMessage.room_id,
-                                user_id: newMessage.user_id,
-                                message: newMessage.message,
-                                created_at: newMessage.created_at,
-                                profiles: profileData || undefined
-                            }
-
-                            setMessages(current => {
-                                // Ensure no duplicates
-                                if (current.some(m => m.id === newMessage.id)) {
-                                    return current
-                                }
-                                return [...current.filter(m => !m.id.startsWith('temp-')), messageWithProfile]
-                                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                            })
-                            setTimeout(scrollToBottom, 50)
+                        if (isOwnMessage) {
+                            // Atomically replace optimistic message with real one
+                            // Find and remove the matching optimistic message
+                            const withoutOptimistic = prev.filter(
+                                m => !(m.id.startsWith('temp-') && m.message === newMessage.message)
+                            )
+                            return [...withoutOptimistic, messageWithProfile]
+                                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                        } else {
+                            // Other users' messages - just add
+                            return [...prev, messageWithProfile]
+                                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                         }
-
-                        fetchAndAddMessage()
-                        return withoutOptimistic
                     })
+                    setTimeout(scrollToBottom, 50)
                 }
             )
             .on(

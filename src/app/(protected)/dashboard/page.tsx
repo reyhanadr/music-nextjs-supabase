@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Music, Users, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthContext } from '@/contexts/AuthContext'
 import { MotionDiv, MotionCard } from '@/components/motion/wrappers'
 import { scaleUp, hoverScale, slideUp, staggerContainer } from '@/components/motion/variants'
 
 export default function DashboardPage() {
-    const { user, profile } = useAuth()
+    // Profile is immediately available from SSR - no loading state needed
+    const { user, profile } = useAuthContext()
     const [stats, setStats] = useState({ totalSongs: 0, activeRooms: 0 })
     const supabase = createClient()
 

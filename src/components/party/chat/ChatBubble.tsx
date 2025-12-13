@@ -3,7 +3,7 @@
 import { RoomMessage } from '@/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { formatChatTime } from '@/lib/formatChatTime'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthContext } from '@/contexts/AuthContext'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -12,7 +12,7 @@ interface ChatBubbleProps {
 }
 
 export function ChatBubble({ message }: ChatBubbleProps) {
-    const { user } = useAuth()
+    const { user } = useAuthContext()
     const isOwnMessage = user?.id === message.user_id
 
     const displayName = message.profiles?.full_name || message.profiles?.username || 'Anonymous'
