@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
             siteName: 'Music Party',
             images: [
                 {
-                    url: '/opengraph_poster.png',
+                    url: `/api/og/invite/${roomId}`,
                     width: 1200,
                     height: 630,
                     alt: `Join ${room.name} party room`,
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
             card: 'summary_large_image',
             title: `🎵 Join "${room.name}" on Music Party`,
             description: `${hostName} is hosting a party room! ${songInfo}`,
-            images: ['/opengraph_poster.png'],
+            images: [`/api/og/invite/${roomId}`],
         },
     }
 }
