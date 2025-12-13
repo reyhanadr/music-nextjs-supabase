@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Lora, Nunito } from "next/font/google";
+import { Inter, Lora, Nunito, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -19,6 +19,14 @@ const nunito = Nunito({
   variable: '--font-nunito',
   weight: ['400', '500', '600', '700'],
   style: ['normal', 'italic'],
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-outfit',
+  weight: ['400', '500', '600', '700'],
+  style: ['normal'],
 });
 
 export const metadata: Metadata = {
@@ -80,7 +88,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${nunito.className} antialiased bg-slate-950 text-white`}>
+      <body className={`${outfit.className} antialiased bg-slate-950 text-white`}>
         <PlayerProvider>
           {children}
           <GlobalMusicPlayer />

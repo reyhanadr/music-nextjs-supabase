@@ -1,6 +1,13 @@
-import { useEffect } from 'react'
-import { getYouTubeThumbnail } from '@/lib/youtube'
+'use client'
+
+import { useEffect, useRef, useCallback } from 'react'
 import { Song } from '@/types'
+
+// ============================================
+// Enhanced Media Session Hook
+// Manages OS/browser media controls integration
+// with position state, hi-res artwork, and stable refs
+// ============================================
 
 interface UseMediaSessionProps {
     title?: string
@@ -9,13 +16,32 @@ interface UseMediaSessionProps {
     artwork?: string
     onPlay?: () => void
     onPause?: () => void
-    onSeekBackward?: () => void // For rewinding
-    onSeekForward?: () => void  // For fast-forwarding
+    onSeekBackward?: () => void
+    onSeekForward?: () => void
     onPrevioustrack?: () => void
     onNexttrack?: () => void
     onSeekTo?: (time: number) => void
     currentSong?: Song | null
     isPlaying?: boolean
+    // New props for position state
+    currentTime?: number
+    duration?: number
+}
+
+// YouTube thumbnail quality fallback chain
+function getHighResThumbnail(youtubeUrl: string): string | undefined {
+    if (!youtubeUrl) return undefined
+
+    // Extract video ID
+    const videoId = youtubeUrl.includes('v=')
+        ? youtubeUrl.split('v=')[1]?.split('&')[0]
+        : youtubeUrl.split('/').pop()?.split('?')[0]
+
+    if (!videoId) return undefined
+
+    // Return maxresdefault for highest quality (1280x720)
+    // Browser will fallback if not available
+    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
 }
 
 export function useMediaSession({
@@ -31,88 +57,175 @@ export function useMediaSession({
     onNexttrack,
     onSeekTo,
     currentSong,
-    isPlaying
+    isPlaying,
+    currentTime,
+    duration,
 }: UseMediaSessionProps) {
+    // ============================================
+    // Stable refs for callbacks
+    // Prevents stale closure issues with action handlers
+    // ============================================
+
+    const onPlayRef = useRef(onPlay)
+    onPlayRef.current = onPlay
+
+    const onPauseRef = useRef(onPause)
+    onPauseRef.current = onPause
+
+    const onSeekBackwardRef = useRef(onSeekBackward)
+    onSeekBackwardRef.current = onSeekBackward
+
+    const onSeekForwardRef = useRef(onSeekForward)
+    onSeekForwardRef.current = onSeekForward
+
+    const onPrevioustrackRef = useRef(onPrevioustrack)
+    onPrevioustrackRef.current = onPrevioustrack
+
+    const onNexttrackRef = useRef(onNexttrack)
+    onNexttrackRef.current = onNexttrack
+
+    const onSeekToRef = useRef(onSeekTo)
+    onSeekToRef.current = onSeekTo
+
+    // ============================================
     // Update metadata when song info changes
+    // ============================================
+
     useEffect(() => {
         if (!('mediaSession' in navigator) || !currentSong) return
 
-        // Prefer passed props, fallback to currentSong details
         const songTitle = title || currentSong.title
         const songArtist = artist || currentSong.artist || 'Unknown Artist'
         const songAlbum = album || 'Music Party'
 
+        // Get high-resolution artwork
         let artworkUrl = artwork
         if (!artworkUrl && currentSong.youtube_url) {
-            // Try to extract ID and get maxres thumbnail
-            const videoId = currentSong.youtube_url.includes('v=')
-                ? currentSong.youtube_url.split('v=')[1]?.split('&')[0]
-                : currentSong.youtube_url.split('/').pop()
-
-            if (videoId) {
-                // We use standard resolution for lock screen as it's often more reliable/cached
-                artworkUrl = `https://img.youtube.com/vi/${videoId}/0.jpg`
-            }
+            artworkUrl = getHighResThumbnail(currentSong.youtube_url)
         }
 
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: songTitle,
-            artist: songArtist,
-            album: songAlbum,
-            artwork: artworkUrl ? [
-                { src: artworkUrl, sizes: '96x96', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '128x128', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '192x192', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '256x256', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '384x384', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '512x512', type: 'image/jpeg' },
-            ] : []
-        })
+        // Fallback to standard resolution if maxres fails
+        const videoId = currentSong.youtube_url?.includes('v=')
+            ? currentSong.youtube_url.split('v=')[1]?.split('&')[0]
+            : currentSong.youtube_url?.split('/').pop()?.split('?')[0]
+
+        const fallbackUrl: string | undefined = videoId
+            ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+            : undefined
+
+        // Build artwork array with multiple sizes for better OS compatibility
+        const artworkArray = artworkUrl ? [
+            { src: artworkUrl, sizes: '96x96', type: 'image/jpeg' },
+            { src: artworkUrl, sizes: '128x128', type: 'image/jpeg' },
+            { src: artworkUrl, sizes: '192x192', type: 'image/jpeg' },
+            { src: artworkUrl, sizes: '256x256', type: 'image/jpeg' },
+            { src: artworkUrl, sizes: '384x384', type: 'image/jpeg' },
+            { src: artworkUrl, sizes: '512x512', type: 'image/jpeg' },
+            // Add fallback for each size
+            ...(fallbackUrl && fallbackUrl !== artworkUrl ? [
+                { src: fallbackUrl, sizes: '480x360', type: 'image/jpeg' },
+            ] : [])
+        ] : []
+
+        try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: songTitle,
+                artist: songArtist,
+                album: songAlbum,
+                artwork: artworkArray
+            })
+        } catch (error) {
+            console.warn('[MediaSession] Error setting metadata:', error)
+        }
     }, [title, artist, album, artwork, currentSong])
 
+    // ============================================
     // Update playback state
+    // ============================================
+
     useEffect(() => {
         if (!('mediaSession' in navigator)) return
 
-        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
+        try {
+            navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
+        } catch (error) {
+            // Ignore
+        }
     }, [isPlaying])
 
-    // Set action handlers
+    // ============================================
+    // Update position state (NEW)
+    // Enables seek bar in OS media controls
+    // ============================================
+
+    useEffect(() => {
+        if (!('mediaSession' in navigator)) return
+        if (typeof duration !== 'number' || duration <= 0) return
+        if (typeof currentTime !== 'number' || currentTime < 0) return
+
+        try {
+            // setPositionState allows OS to show progress bar
+            if ('setPositionState' in navigator.mediaSession) {
+                navigator.mediaSession.setPositionState({
+                    duration: duration,
+                    playbackRate: 1.0,
+                    position: Math.min(currentTime, duration),
+                })
+            }
+        } catch (error) {
+            // Some browsers may not support setPositionState
+            // or may throw if values are out of range
+        }
+    }, [currentTime, duration])
+
+    // ============================================
+    // Set action handlers with stable refs
+    // ============================================
+
     useEffect(() => {
         if (!('mediaSession' in navigator)) return
 
-        const actionHandlers = [
-            ['play', onPlay],
-            ['pause', onPause],
-            ['previoustrack', onPrevioustrack],
-            ['nexttrack', onNexttrack],
-            ['seekbackward', onSeekBackward],
-            ['seekforward', onSeekForward],
-            ['seekto', (details: any) => {
-                if (onSeekTo && details.seekTime) {
-                    onSeekTo(details.seekTime)
+        // Use stable wrapper functions that call current refs
+        const handlers: [MediaSessionAction, (() => void) | ((details: any) => void) | undefined][] = [
+            ['play', () => onPlayRef.current?.()],
+            ['pause', () => onPauseRef.current?.()],
+            ['previoustrack', () => onPrevioustrackRef.current?.()],
+            ['nexttrack', () => onNexttrackRef.current?.()],
+            ['seekbackward', () => onSeekBackwardRef.current?.()],
+            ['seekforward', () => onSeekForwardRef.current?.()],
+            ['seekto', (details: MediaSessionActionDetails) => {
+                if (onSeekToRef.current && details.seekTime !== undefined) {
+                    onSeekToRef.current(details.seekTime)
                 }
             }],
         ]
 
-        actionHandlers.forEach(([action, handler]) => {
+        handlers.forEach(([action, handler]) => {
             try {
                 if (handler) {
-                    navigator.mediaSession.setActionHandler(action as any, handler as any)
+                    navigator.mediaSession.setActionHandler(action, handler as MediaSessionActionHandler)
                 } else {
-                    navigator.mediaSession.setActionHandler(action as any, null)
+                    navigator.mediaSession.setActionHandler(action, null)
                 }
             } catch (e) {
                 // Ignore errors for unsupported actions
             }
         })
 
+        // Cleanup on unmount - remove handlers
         return () => {
-            // Cleanup - remove handlers? 
-            // Usually not strictly necessary as they get overwritten, but good practice if component unmounts
-            // However, wiping them might affect other players if we have multiple. 
-            // We'll leave them be or set to null on unmount if we want to be strict.
-            // For now, let's just rely on the new hook mounting to overwrite them.
+            const actions: MediaSessionAction[] = [
+                'play', 'pause', 'previoustrack', 'nexttrack',
+                'seekbackward', 'seekforward', 'seekto'
+            ]
+
+            actions.forEach((action) => {
+                try {
+                    navigator.mediaSession.setActionHandler(action, null)
+                } catch (e) {
+                    // Ignore
+                }
+            })
         }
-    }, [onPlay, onPause, onPrevioustrack, onNexttrack, onSeekBackward, onSeekForward, onSeekTo])
+    }, []) // Empty deps - we use refs for stable handlers
 }
