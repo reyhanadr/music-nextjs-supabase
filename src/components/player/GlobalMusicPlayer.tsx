@@ -11,10 +11,13 @@ export function GlobalMusicPlayer() {
     // Hide player on party listing and party room pages
     const isPartyRoute = pathname?.startsWith('/party')
 
+    // Hide on invite pages (public preview for unauthenticated users)
+    const isInviteRoute = pathname?.startsWith('/invite')
+
     // Also hide on login/register pages
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/' || pathname === '/auth/login' || pathname === '/auth/register' || pathname === '/auth/complete-profile' || pathname === '/changelog'
 
-    if (isPartyRoute || isAuthRoute) {
+    if (isPartyRoute || isInviteRoute || isAuthRoute) {
         return null
     }
 

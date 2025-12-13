@@ -59,7 +59,9 @@ function LoginForm() {
             setLoading(false)
         } else {
             toast.success('Logged in successfully!')
-            router.push('/dashboard')
+            // Check for redirect parameter (from invite links)
+            const redirectTo = searchParams.get('redirect')
+            router.push(redirectTo || '/dashboard')
         }
     }
 

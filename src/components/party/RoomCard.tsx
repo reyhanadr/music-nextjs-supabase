@@ -97,11 +97,11 @@ export function RoomCard({ room, isOwner, onDelete, onRoomUpdated }: RoomCardPro
         )
     }
 
-    // Copy invite link
+    // Copy invite link (uses /invite/ route for OpenGraph metadata)
     const handleCopyLink = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        const link = `${window.location.origin}/party/${room.id}`
+        const link = `${window.location.origin}/invite/${room.id}`
         navigator.clipboard.writeText(link)
         toast.success('Invite link copied!')
     }
