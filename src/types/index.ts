@@ -33,6 +33,12 @@ export interface Room {
     playlist: string[]
     created_at: string
     updated_at: string
+    // New fields for room list optimization
+    room_state?: 'active' | 'idle' | 'closed'
+    current_song_title?: string
+    current_song_artist?: string
+    current_song_youtube_url?: string
+    listener_count?: number
 }
 
 export interface RoomUser {
