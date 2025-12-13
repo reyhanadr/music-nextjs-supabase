@@ -141,7 +141,7 @@ export function CreateRoomDialog({ onRoomCreated }: CreateRoomDialogProps) {
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: index * 0.03 }}
                                         onClick={() => toggleSong(song.id)}
-                                        className={`flex items-center gap-3 p-2 sm:p-3 rounded-lg cursor-pointer transition-all border overflow-hidden ${selectedSongs.includes(song.id)
+                                        className={`flex items-center gap-3 p-2 sm:p-3 rounded-lg cursor-pointer transition-all border ${selectedSongs.includes(song.id)
                                             ? 'bg-primary/10 border-primary/40 shadow-[0_0_10px_-3px_var(--primary)]'
                                             : 'bg-card/50 hover:bg-card border-transparent hover:border-sidebar-foreground/10'
                                             }`}
@@ -167,8 +167,8 @@ export function CreateRoomDialog({ onRoomCreated }: CreateRoomDialogProps) {
                                             })()}
                                         </div>
 
-                                        {/* Song Info */}
-                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                        {/* Song Info - w-0 forces proper width constraint for MarqueeText */}
+                                        <div className="flex-1 w-0 overflow-hidden">
                                             <MarqueeText
                                                 text={song.title}
                                                 className={`font-medium text-sm sm:text-base ${selectedSongs.includes(song.id) ? 'text-foreground' : 'text-muted-foreground'}`}

@@ -9,7 +9,6 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat2 } from 'lucide-rea
 import { extractYouTubeId, formatTime, getYouTubeThumbnail } from '@/lib/youtube'
 import { Song } from '@/types'
 import { useMediaSession } from '@/hooks/useMediaSession'
-import { useBackgroundPlayback } from '@/hooks/useBackgroundPlayback'
 import Image from 'next/image'
 import YouTube, { YouTubePlayer } from 'react-youtube'
 import { MotionDiv, MotionButton } from '@/components/motion/wrappers'
@@ -58,6 +57,7 @@ export function MusicPlayer({
     const intervalRef = useRef<NodeJS.Timeout | null>(null)
     const playerRef = useRef<YouTube>(null)
     const lastVideoId = useRef<string | null>(null)
+    const endTriggeredRef = useRef(false) // Prevent duplicate onEnded calls
     const [isExpanded, setIsExpanded] = useState(false) // Expanded player modal state
 
     // Get video ID
@@ -80,26 +80,13 @@ export function MusicPlayer({
             setIsPlayerReady(false)
             setPlayer(null)
             setLocalTime(0)
-            resetEndTrigger() // Reset end trigger via hook
+            endTriggeredRef.current = false // Reset end trigger on new video
             if (intervalRef.current) {
                 clearInterval(intervalRef.current)
                 intervalRef.current = null
             }
         }
-    }, [videoId]) // resetEndTrigger intentionally excluded - stable ref
-
-    // Integrate background playback hook for visibility handling and end detection
-    const { endTriggeredRef, resetEndTrigger } = useBackgroundPlayback({
-        player,
-        isPlayerReady,
-        isPlaying,
-        duration,
-        currentTime: localTime,
-        onEnded,
-        isRepeat,
-        endThreshold: 0.5,
-        checkInterval: 250,
-    })
+    }, [videoId])
 
     const startTimeTracking = useCallback((ytPlayer: YouTubePlayer) => {
         // Clear existing interval
@@ -112,27 +99,68 @@ export function MusicPlayer({
             try {
                 if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
                     const time = ytPlayer.getCurrentTime()
+                    const ytDuration = typeof ytPlayer.getDuration === 'function' ? ytPlayer.getDuration() : 0
 
                     if (typeof time === 'number' && !isNaN(time)) {
                         setLocalTime(time)
                         onProgress(time)
-                        // Note: End detection is now handled by useBackgroundPlayback hook
+
+                        // Fallback end detection for background tabs
+                        // Check if within 0.5 second of end
+                        if (ytDuration > 0 && time >= ytDuration - 0.5 && time > 0 && !endTriggeredRef.current) {
+                            console.log('Background end detection: triggering onEnded')
+                            endTriggeredRef.current = true
+                            onEnded()
+                        }
                     }
                 }
             } catch (error) {
                 // Player might be destroyed, ignore errors
             }
-        }, 250) // 250ms for responsive time updates
-    }, [onProgress])
+        }, 250) // 250ms for more responsive background detection
+    }, [onProgress, onEnded])
 
-    // Note: Visibility change handling is now managed by useBackgroundPlayback hook
-    // This effect is kept minimal for any additional recovery logic
+    // Handle visibility change to check for ended state when returning to tab
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && player && isPlayerReady) {
-                // Additional recovery logic if needed
-                // Main end detection is handled by useBackgroundPlayback
-                console.log('[MusicPlayer] Tab visible - checking player state')
+                try {
+                    const playerState = player.getPlayerState()
+                    const currentTime = player.getCurrentTime()
+                    const duration = player.getDuration()
+
+                    // Check if video ended while we were away
+                    if (playerState === 0 && !endTriggeredRef.current) {
+                        console.log('Visibility change: ended state detected')
+                        endTriggeredRef.current = true
+
+                        if (isRepeat) {
+                            // Repeat mode: seek to beginning and play again
+                            player.seekTo(0, true)
+                            player.playVideo()
+                            endTriggeredRef.current = false
+                        } else {
+                            onEnded()
+                        }
+                    }
+
+                    // Also check if we're at the end of the video
+                    if (duration > 0 && currentTime >= duration - 0.5 && !endTriggeredRef.current) {
+                        console.log('Visibility change: near end detected')
+                        endTriggeredRef.current = true
+
+                        if (isRepeat) {
+                            // Repeat mode: seek to beginning and play again
+                            player.seekTo(0, true)
+                            player.playVideo()
+                            endTriggeredRef.current = false
+                        } else {
+                            onEnded()
+                        }
+                    }
+                } catch (error) {
+                    // Ignore errors
+                }
             }
         }
 
@@ -140,7 +168,7 @@ export function MusicPlayer({
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange)
         }
-    }, [player, isPlayerReady])
+    }, [player, isPlayerReady, onEnded, isRepeat])
 
     const onPlayerReady = useCallback((event: { target: YouTubePlayer }) => {
         try {
@@ -173,21 +201,20 @@ export function MusicPlayer({
         }
     }, [volume, onDuration, startTimeTracking, isPlaying])
 
-    // Player state change handler - simplified since end detection is in hook
     const onPlayerStateChange = useCallback((event: any) => {
         try {
             // YouTube.PlayerState: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
             if (event.data === 0) {
-                // Video ended - let the hook handle this, but also trigger directly for reliability
-                console.log('[MusicPlayer] YouTube ended event')
+                // Video ended
                 if (isRepeat) {
+                    // Repeat mode: seek to beginning and play again
                     const ytPlayer = event.target
                     if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
                         ytPlayer.seekTo(0, true)
                         ytPlayer.playVideo()
                     }
-                } else if (!endTriggeredRef.current) {
-                    endTriggeredRef.current = true
+                } else {
+                    // Normal mode: go to next song
                     onEnded()
                 }
             } else if (event.data === 1) {
@@ -270,15 +297,13 @@ export function MusicPlayer({
     // Use song duration if available, otherwise use fetched duration
     const displayDuration = currentSong?.duration || duration
 
-    // Media Session Integration with position state - MUST be called before conditional returns
+    // Media Session Integration - MUST be called before conditional returns
     useMediaSession({
         title: currentSong?.title,
         artist: currentSong?.artist,
         artwork: thumbnail || undefined,
         currentSong: currentSong,
         isPlaying: isPlaying,
-        currentTime: displayTime,
-        duration: displayDuration,
         onPlay: onPlayPause,
         onPause: onPlayPause,
         onPrevioustrack: onPrevious,

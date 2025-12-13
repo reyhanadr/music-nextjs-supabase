@@ -20,9 +20,6 @@ export function usePlayer(initialPlaylist: Song[] = []) {
     const [isRepeat, setIsRepeat] = useState(false)
     const playerRef = useRef<any>(null)
 
-    // Guard against race conditions - prevents multiple next calls
-    const isTransitioningRef = useRef(false)
-
     // Callback ref for getting next song from queue
     // This will be set by the QueueContext to inject queue logic
     const getNextFromQueueRef = useRef<(() => Song | null) | null>(null)
@@ -91,25 +88,10 @@ export function usePlayer(initialPlaylist: Song[] = []) {
 
     // Next song - check queue first, then fallback to playlist
     const next = useCallback(() => {
-        // Guard: Prevent multiple rapid next calls (race condition)
-        if (isTransitioningRef.current) {
-            console.log('[usePlayer] next() blocked - already transitioning')
-            return
-        }
-
-        isTransitioningRef.current = true
-        console.log('[usePlayer] next() called - transitioning to next song')
-
-        // Reset transitioning flag after delay
-        setTimeout(() => {
-            isTransitioningRef.current = false
-        }, 1000)
-
         // Try to get next song from queue
         if (getNextFromQueueRef.current) {
             const nextFromQueue = getNextFromQueueRef.current()
             if (nextFromQueue) {
-                console.log('[usePlayer] Playing from queue:', nextFromQueue.title)
                 setCurrentSong(nextFromQueue)
                 setCurrentTime(0)
                 setIsPlaying(true)
@@ -125,15 +107,10 @@ export function usePlayer(initialPlaylist: Song[] = []) {
         // Fallback to playlist if queue is empty
         if (playlist.length > 0) {
             const nextIndex = (currentIndex + 1) % playlist.length
-            console.log('[usePlayer] Playing from playlist index:', nextIndex)
             setCurrentIndex(nextIndex)
             setCurrentSong(playlist[nextIndex])
             setCurrentTime(0)
             setIsPlaying(true)
-        } else {
-            // Queue is empty and no playlist - graceful stop
-            console.log('[usePlayer] Queue and playlist empty - stopping playback')
-            setIsPlaying(false)
         }
     }, [currentIndex, playlist])
 
@@ -211,13 +188,9 @@ export function usePlayer(initialPlaylist: Song[] = []) {
     }, [])
 
     // handleEnded - check repeat first, then queue, then playlist
-    // Uses transitioning guard to prevent double triggers
     const handleEnded = useCallback(() => {
-        console.log('[usePlayer] handleEnded called, isRepeat:', isRepeat)
-
         if (isRepeat && currentSong) {
             // Repeat current song - reset to beginning
-            console.log('[usePlayer] Repeat mode - restarting current song')
             setCurrentTime(0)
             setIsPlaying(true)
             // Seek player to beginning
@@ -226,7 +199,6 @@ export function usePlayer(initialPlaylist: Song[] = []) {
             }
         } else {
             // Normal behavior - go to next song
-            // The next() function has its own transitioning guard
             next()
         }
     }, [isRepeat, currentSong, next])

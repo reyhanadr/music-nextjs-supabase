@@ -80,6 +80,7 @@ export const metadata: Metadata = {
 
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { GlobalMusicPlayer } from "@/components/player/GlobalMusicPlayer";
+import { QueryProvider } from "@/providers/QueryProvider";
 
 export default function RootLayout({
   children,
@@ -89,11 +90,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${outfit.className} antialiased bg-slate-950 text-white`}>
-        <PlayerProvider>
-          {children}
-          <GlobalMusicPlayer />
-          <Toaster richColors position="top-right" />
-        </PlayerProvider>
+        <QueryProvider>
+          <PlayerProvider>
+            {children}
+            <GlobalMusicPlayer />
+            <Toaster richColors position="top-right" />
+          </PlayerProvider>
+        </QueryProvider>
       </body>
     </html>
   );

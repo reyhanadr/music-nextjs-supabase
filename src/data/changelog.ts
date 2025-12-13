@@ -11,9 +11,12 @@ import {
     Shield,
     Trash2,
     MessageCircle,
-    Radio,
-    TabletSmartphone,
-    LucideIcon
+    LucideIcon,
+    Search,
+    Clock,
+    Globe,
+    Keyboard,
+    ListEnd
 } from 'lucide-react'
 
 export interface ChangelogEntry {
@@ -34,37 +37,67 @@ export const changelog: ChangelogRelease[] = [
     {
         version: '1.3.0',
         date: '2025-12-14',
-        title: 'Background Playback & Media Controls',
+        title: 'Songs Page Overhaul',
         changes: [
             {
                 type: 'feature',
-                icon: Radio,
-                title: 'Background Playback Hook',
-                description: 'New useBackgroundPlayback hook for reliable audio playback when switching tabs or locking phone.',
+                icon: Globe,
+                title: 'Tab Navigation',
+                description: 'New tabs for My Songs, Global Songs, and Recently Played with URL sync (?tab=my|global|recent).',
+            },
+            {
+                type: 'feature',
+                icon: Search,
+                title: 'Enhanced Search',
+                description: 'Debounced search (400ms) with sorting options: Newest, Oldest, A-Z, Z-A.',
+            },
+            {
+                type: 'feature',
+                icon: Clock,
+                title: 'Recently Played',
+                description: 'Tracks played songs in localStorage, persists per device. View your listening history.',
+            },
+            {
+                type: 'feature',
+                icon: ListEnd,
+                title: 'Play Next',
+                description: 'New "Play Next" button on song cards to add songs to the front of the queue.',
             },
             {
                 type: 'improvement',
-                icon: Smartphone,
-                title: 'Lock Screen Controls',
-                description: 'Enhanced Media Session API with setPositionState() for seek bar support and hi-res artwork on lock screen.',
+                icon: Zap,
+                title: 'Infinite Scroll',
+                description: 'Global songs tab now loads more songs automatically as you scroll down.',
             },
             {
                 type: 'improvement',
-                icon: TabletSmartphone,
-                title: 'Mobile Safeguards',
-                description: 'Added orientation change and focus/blur handlers to prevent playback interruption on mobile devices.',
+                icon: Sparkles,
+                title: 'Song Card Enhancements',
+                description: 'Duration badge, owner badge (You/username), and improved hover animations.',
+            },
+            {
+                type: 'improvement',
+                icon: Keyboard,
+                title: 'Keyboard Shortcuts',
+                description: 'Press Ctrl+K (or Cmd+K) to quickly focus the search input.',
             },
             {
                 type: 'fix',
                 icon: Bug,
-                title: 'Double-Ended Trigger Prevention',
-                description: 'Fixed songs sometimes skipping twice when ending in background with debounced end detection guards.',
+                title: 'Loading States',
+                description: 'Fixed skeleton loader not showing during auth and data loading.',
+            },
+            {
+                type: 'feature',
+                icon: Clock,
+                title: 'Recently Played Cloud Sync',
+                description: 'Play history now syncs to Supabase, accessible across devices when logged in.',
             },
             {
                 type: 'fix',
-                icon: Zap,
-                title: 'Queue Auto-Continue',
-                description: 'Fixed queue not auto-playing next song when app is in background. Added timer-based fallback detection.',
+                icon: Smartphone,
+                title: 'Create Room Dialog',
+                description: 'Fixed long song titles expanding dialog width. MarqueeText now properly truncates.',
             },
         ],
     },

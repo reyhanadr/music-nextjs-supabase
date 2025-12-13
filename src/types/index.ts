@@ -10,6 +10,19 @@ export interface Song {
     updated_at: string
 }
 
+// Song with joined profile data for owner info
+export interface SongWithOwner extends Song {
+    profiles?: {
+        username?: string
+        full_name?: string
+        avatar_url?: string
+    } | null
+}
+
+// Sort options for songs list
+export type SortOption = 'newest' | 'oldest' | 'a-z' | 'z-a'
+
+
 export interface Room {
     id: string
     name: string

@@ -16,7 +16,6 @@ import { extractYouTubeId, formatTime, getYouTubeThumbnail } from '@/lib/youtube
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { useMediaSession } from '@/hooks/useMediaSession'
-import { useBackgroundPlayback } from '@/hooks/useBackgroundPlayback'
 import Image from 'next/image'
 import YouTube, { YouTubePlayer } from 'react-youtube'
 import { MotionDiv, MotionCard, MotionButton } from '@/components/motion/wrappers'
@@ -41,8 +40,6 @@ export default function PartyRoomPage() {
     const lastRoomTimeRef = useRef<number>(0) // Track last room time we received
     const hasInitialSyncRef = useRef(false)
     const syncCountRef = useRef(0) // Track number of syncs to limit for new joiners
-    const endTriggeredRef = useRef(false) // Guard for end detection
-    const wasPlayingBeforeHiddenRef = useRef(false) // Track state before tab hidden
 
     const {
         room,
@@ -116,50 +113,12 @@ export default function PartyRoomPage() {
             lastRoomTimeRef.current = 0
             hasInitialSyncRef.current = false
             syncCountRef.current = 0 // Reset sync counter on video change
-            endTriggeredRef.current = false // Reset end trigger
             if (intervalRef.current) {
                 clearInterval(intervalRef.current)
                 intervalRef.current = null
             }
         }
     }, [videoId])
-
-    // Background playback: Visibility change handler for sync recovery
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'hidden') {
-                wasPlayingBeforeHiddenRef.current = room?.is_playing || false
-                console.log('[PartyRoom] Tab hidden, wasPlaying:', wasPlayingBeforeHiddenRef.current)
-            } else if (document.visibilityState === 'visible') {
-                console.log('[PartyRoom] Tab visible - checking player state')
-
-                if (!player || !isPlayerReady || !room) return
-
-                try {
-                    const playerState = player.getPlayerState()
-
-                    // Check if video ended while we were away
-                    if (playerState === 0 && !endTriggeredRef.current) {
-                        console.log('[PartyRoom] Video ended while in background')
-                        endTriggeredRef.current = true
-                        nextSong()
-                    }
-                    // If room says playing but player is paused, resume
-                    else if (room.is_playing && playerState === 2) {
-                        console.log('[PartyRoom] Resuming playback on visibility return')
-                        player.playVideo()
-                    }
-                } catch (error) {
-                    console.warn('[PartyRoom] Visibility sync error:', error)
-                }
-            }
-        }
-
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange)
-        }
-    }, [player, isPlayerReady, room, nextSong])
 
     // Start time tracking - Host broadcasts every 200ms, updates DB every 2s
     const startTimeTracking = useCallback((ytPlayer: YouTubePlayer) => {
@@ -255,24 +214,14 @@ export default function PartyRoomPage() {
         }
     }, [volume, room, isHost, startTimeTracking])
 
-    // Player state change handler with end detection guard
+    // Player state change handler
     const onPlayerStateChange = useCallback((event: any) => {
         try {
             if (event.data === 0) {
-                // Video ended - use guard to prevent double triggers
-                console.log('[PartyRoom] YouTube ended event')
-                if (!endTriggeredRef.current) {
-                    endTriggeredRef.current = true
-                    nextSong()
-                    // Reset after delay
-                    setTimeout(() => {
-                        endTriggeredRef.current = false
-                    }, 1000)
-                }
+                nextSong()
             } else if (event.data === 1) {
                 setIsLoading(false)
                 setIsSeeking(false)
-                endTriggeredRef.current = false // Reset on successful play
                 if (player && !intervalRef.current) {
                     startTimeTracking(player)
                 }
@@ -473,16 +422,13 @@ export default function PartyRoomPage() {
     // Display time
     const displayTime = localTime
 
-    // Media Session Integration with position state - Must be at top level
-    // Note: displayDuration is defined after early returns, so we use currentSong?.duration here
+    // Media Session Integration - Must be at top level
     useMediaSession({
         title: currentSong?.title,
         artist: currentSong?.artist,
         artwork: thumbnail || undefined,
         currentSong: currentSong,
         isPlaying: room?.is_playing ?? false,
-        currentTime: displayTime,
-        duration: currentSong?.duration || 300,
         onPlay: async () => {
             if (!room?.is_playing) {
                 await handlePlayPause()
