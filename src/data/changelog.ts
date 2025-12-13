@@ -35,6 +35,49 @@ export interface ChangelogRelease {
 
 export const changelog: ChangelogRelease[] = [
     {
+        version: '1.4.0',
+        date: '2025-12-14',
+        title: 'Party Room Enhancements',
+        changes: [
+            {
+                type: 'feature',
+                icon: Sparkles,
+                title: 'Enhanced Room Cards',
+                description: 'Room cards now display host avatar/name, current song with thumbnail, and real-time listener count with animations.',
+            },
+            {
+                type: 'feature',
+                icon: ListMusic,
+                title: 'Sorting & Filtering',
+                description: 'Sort rooms by Most Listeners, Now Playing, or Recently Active. Filter to show only active rooms.',
+            },
+            {
+                type: 'improvement',
+                icon: Zap,
+                title: 'Status Badges',
+                description: 'Visual status indicators: Playing (green pulse), Paused (yellow), Idle (gray) for quick room identification.',
+            },
+            {
+                type: 'improvement',
+                icon: Globe,
+                title: 'Copy Invite Link',
+                description: 'New quick action button to copy room invite link to clipboard with one click.',
+            },
+            {
+                type: 'improvement',
+                icon: Zap,
+                title: 'Realtime Resilience',
+                description: 'Graceful fallback to polling if realtime connection drops, ensuring UI stays updated.',
+            },
+            {
+                type: 'fix',
+                icon: Bug,
+                title: 'Database Optimization',
+                description: 'Denormalized song info and listener counts for faster room list loading without N+1 queries.',
+            },
+        ],
+    },
+    {
         version: '1.3.0',
         date: '2025-12-14',
         title: 'Songs Page Overhaul',
